@@ -15,22 +15,22 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: users-secret
-                  key: DB_PSWD
+                  key: POSTGRES_PSWD
             - name: PGHOST
               valueFrom:
                 configMapKeyRef:
                   name: users-config
-                  key: DB_HOST
+                  key: POSTGRES_HOST
             - name: PGUSER
               valueFrom:
                 configMapKeyRef:
                   name: users-config
-                  key: DB_USER
+                  key: POSTGRES_USER
             - name: PGDATABASE
               valueFrom:
                 configMapKeyRef:
                   name: users-config
-                  key: DB_NAME
+                  key: POSTGRES_NAME
           command:
             - /bin/sh
             - -c
