@@ -1,0 +1,5 @@
+apiVersion: v2
+name: gateway
+version: 0.1.0
+description: Custom API Gateway with NGINX
+type: application

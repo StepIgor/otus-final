@@ -69,9 +69,8 @@ app.post("/register", async (req, res) => {
       "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
       [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
     );
-    return res.status(201).json(newUser);
+    return res.status(201).json(newUser.rows[0]);
   } catch (error) {
-    console.log("Ошибка внесения записи /register", error);
     return res.status(400).send(error.message);
   }
 });
@@ -119,8 +118,20 @@ app.post("/refresh-token", async (req, res) => {
       })
       .json({ accessToken });
   } catch (err) {
-    console.log("Ошибка /refresh-token", err);
-    return res.sendStatus(403);
+    return res.status(403).send(err.message);
+  }
+});
+
+app.get("/validate", (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer "))
+    return res.sendStatus(401);
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = jwt.verify(token, ACCESS_JWT_SECRET);
+    return res.setHeader("X-User-Id", payload.userId).sendStatus(200);
+  } catch (err) {
+    res.status(401).send(err.message);
   }
 });
 

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-configmap
+data:
+  nginx.conf: |
+{{ .Files.Get "nginx.conf" | indent 4 }}
