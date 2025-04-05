@@ -40,7 +40,7 @@ const generateTokens = (userId) => {
 };
 
 // ENDPOINTS
-app.post("/register", async (req, res) => {
+app.post("/v1/register", async (req, res) => {
   const { email, nickname, password, name, surname, birthdate } = req.body;
   if (!email || !nickname || !password || !name || !surname || !birthdate) {
     return res
@@ -75,7 +75,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/v1/login", async (req, res) => {
   const { login, password } = req.body;
   if (!login || !password) {
     return res.status(400).send("Не указаны реквизиты: login, password");
@@ -93,12 +93,12 @@ app.post("/login", async (req, res) => {
   return res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      path: "/refresh-token",
+      path: "/auth/refresh-token",
     })
     .json({ accessToken });
 });
 
-app.post("/refresh-token", async (req, res) => {
+app.post("/v1/refresh-token", async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) return res.sendStatus(401);
   try {
@@ -114,7 +114,7 @@ app.post("/refresh-token", async (req, res) => {
     return res
       .cookie("refreshToken", newRefresh, {
         httpOnly: true,
-        path: "/refresh-token",
+        path: "/auth/refresh-token",
       })
       .json({ accessToken });
   } catch (err) {
@@ -122,7 +122,7 @@ app.post("/refresh-token", async (req, res) => {
   }
 });
 
-app.get("/validate", (req, res) => {
+app.get("/v1/validate", (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer "))
     return res.sendStatus(401);

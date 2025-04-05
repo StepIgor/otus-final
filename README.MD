@@ -8,3 +8,7 @@ helm install users-redis bitnami/redis -f values/redis_common_values.yaml
 ```
 kubectl apply -f manifests/
 ```
+3. Установка NGINX Gateway из своего helm-чарта
+```
+helm install nginx-gateway src/gateway
+```
