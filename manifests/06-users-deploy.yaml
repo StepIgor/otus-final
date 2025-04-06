@@ -31,13 +31,18 @@ spec:
             - name: REDIS_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: users-config
+                  name: redis-config
                   key: REDIS_HOST
             - name: REDIS_PORT
               valueFrom:
                 configMapKeyRef:
-                  name: users-config
+                  name: redis-config
                   key: REDIS_PORT
+            - name: REDIS_PSWD
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PSWD
             - name: POSTGRES_USER
               valueFrom:
                 configMapKeyRef:
@@ -58,6 +63,21 @@ spec:
                 configMapKeyRef:
                   name: users-config
                   key: POSTGRES_PORT
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PSWD
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_PSWD
             - name: ACCESS_JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -68,11 +88,6 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: REFRESH_JWT_SECRET
-            - name: REDIS_PSWD
-              valueFrom:
-                secretKeyRef:
-                  name: users-secret
-                  key: REDIS_PSWD
             - name: POSTGRES_PSWD
               valueFrom:
                 secretKeyRef:

@@ -5,12 +5,14 @@ import cookieParser from "cookie-parser";
 import pg from "pg";
 const { Pool } = pg;
 import Redis from "ioredis";
-import cors from 'cors';
+import cors from "cors";
+import amqplib from "amqplib";
 
 const APP_PORT = process.env.APP_PORT;
 const ACCESS_JWT_SECRET = process.env.ACCESS_JWT_SECRET;
 const REFRESH_JWT_SECRET = process.env.REFRESH_JWT_SECRET;
 const PSWD_HASH_ROUNDS = process.env.PSWD_HASH_ROUNDS;
+const RABBIT_URL = `amqp://${process.env.RABBITMQ_USER}:${process.env.RABBITMQ_PSWD}@${process.env.RABBITMQ_HOST}`;
 
 const app = express();
 const redis = new Redis({
@@ -28,10 +30,12 @@ const postgresql = new Pool({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, ACCESS_JWT_SECRET, {
@@ -43,6 +47,29 @@ const generateTokens = (userId) => {
   redis.set(`refresh:${refreshToken}`, userId, "EX", 60 * 60 * 24 * 7); // 7 дней (seconds)
   return { accessToken, refreshToken };
 };
+
+// Отправка сообщений в RabbitMQ
+async function sendToRabbitEchange(exchange, routingKey, message) {
+  try {
+    const connection = await amqplib.connect(RABBIT_URL);
+    const channel = await connection.createChannel();
+    // Объявляем Exchange (тип: topic)
+    await channel.assertExchange(exchange, "topic", {
+      durable: true,
+    });
+    // Публикуем сообщение с routing key
+    channel.publish(
+      exchange,
+      routingKey,
+      Buffer.from(JSON.stringify(message)),
+      { persistent: true }
+    );
+    await channel.close();
+    await connection.close();
+  } catch (error) {
+    console.error("Ошибка отправки сообщения в RabbitMQ:", error.message);
+  }
+}
 
 // ENDPOINTS
 app.post("/v1/register", async (req, res) => {
@@ -70,11 +97,16 @@ app.post("/v1/register", async (req, res) => {
     const userRoleId = await postgresql
       .query("SELECT id FROM roles WHERE lower(name) = lower('user')")
       .then((res) => res.rows[0].id);
-    const newUser = await postgresql.query(
-      "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nickname, name, surname, birthdate",
-      [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
-    );
-    return res.status(201).json(newUser.rows[0]);
+    const newUser = await postgresql
+      .query(
+        "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nickname, name, surname, birthdate",
+        [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
+      )
+      .then((res) => res.rows[0]);
+    sendToRabbitEchange("billing_events", "user.created", {
+      userId: newUser.id,
+    });
+    return res.status(201).json(newUser);
   } catch (error) {
     return res.status(400).send(error.message);
   }

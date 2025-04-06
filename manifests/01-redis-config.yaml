@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+data:
+  REDIS_HOST: "common-redis-master"
+  REDIS_PORT: "6379"
+  REDIS_PSWD: "password"
