@@ -66,7 +66,7 @@ app.post("/v1/register", async (req, res) => {
       .query("SELECT id FROM roles WHERE lower(name) = lower('user')")
       .then((res) => res.rows[0].id);
     const newUser = await postgresql.query(
-      "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nickname, name, surname, birthdate",
       [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
     );
     return res.status(201).json(newUser.rows[0]);
@@ -84,10 +84,10 @@ app.post("/v1/login", async (req, res) => {
     .query("SELECT * FROM users WHERE email = $1 OR nickname = $1", [login])
     .then((res) => res.rows[0]);
   if (!user) {
-    return res.status(401).send("Пользователь не обнаружен");
+    return res.status(400).send("Пользователь не обнаружен");
   }
   if (!(await bcrypt.compare(password, user.password_hash))) {
-    return res.status(401).send("Указан неверный пароль");
+    return res.status(400).send("Указан неверный пароль");
   }
   const { accessToken, refreshToken } = generateTokens(user.id);
   return res
