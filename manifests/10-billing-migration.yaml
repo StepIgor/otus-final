@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: billing-postgre-migration
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: billing-secret
+                  key: POSTGRES_PSWD
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: POSTGRES_HOST
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: POSTGRES_USER
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: POSTGRES_NAME
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "
+              CREATE TABLE billingevents (
+                id UUID PRIMARY KEY,
+                userid INT NOT NULL,
+                type TEXT NOT NULL CHECK (type IN ('DEPOSIT', 'PURCHASE', 'REFUND')),
+                amount NUMERIC NOT NULL,
+                createdate TIMESTAMPTZ DEFAULT now(),
+                description TEXT
+              );
+              CREATE TABLE userbalances (
+                user_id UUID PRIMARY KEY,
+                balance NUMERIC NOT NULL DEFAULT 0
+              );
+              " | psql
+      restartPolicy: OnFailure
