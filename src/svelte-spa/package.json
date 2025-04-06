@@ -14,6 +14,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "@picocss/pico": "^2.1.1"
+    "@picocss/pico": "^2.1.1",
+    "svelte-spa-router": "^4.0.1"
   }
 }

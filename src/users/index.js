@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import pg from "pg";
 const { Pool } = pg;
 import Redis from "ioredis";
+import cors from 'cors';
 
 const APP_PORT = process.env.APP_PORT;
 const ACCESS_JWT_SECRET = process.env.ACCESS_JWT_SECRET;
@@ -27,6 +28,10 @@ const postgresql = new Pool({
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, ACCESS_JWT_SECRET, {
