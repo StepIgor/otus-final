@@ -206,7 +206,7 @@ app.get("/v1/users/:id", async (req, res) => {
 
   try {
     const result = await postgresql.query(
-      `SELECT u.id, u.email, u.nickname, u.name, u.surname, u.birthdate, r.name
+      `SELECT u.id, u.email, u.nickname, u.name, u.surname, u.birthdate, r.name "rolename"
        FROM users u JOIN roles r ON r.id = u.roleid
        WHERE u.id = $1`,
       [userId]
