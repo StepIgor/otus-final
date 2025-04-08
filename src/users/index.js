@@ -74,6 +74,7 @@ async function sendToRabbitEchange(exchange, routingKey, message) {
 // ENDPOINTS
 app.post("/v1/register", async (req, res) => {
   const { email, nickname, password, name, surname, birthdate } = req.body;
+
   if (!email || !nickname || !password || !name || !surname || !birthdate) {
     return res
       .status(400)
@@ -81,34 +82,62 @@ app.post("/v1/register", async (req, res) => {
         "Не указан один из обязательных реквизитов: email, nickname, password, name, surname, birhdate"
       );
   }
-  const existingUser = await postgresql
-    .query("SELECT null FROM users WHERE email = $1 or nickname = $2", [
-      email,
-      nickname,
-    ])
-    .then((res) => res.rows[0]);
-  if (existingUser) {
-    return res
-      .status(400)
-      .send("Пользователь с указанными email или nickname уже зарегистрирован");
-  }
-  const hashedPswd = await bcrypt.hash(password, Number(PSWD_HASH_ROUNDS));
+
+  const client = await postgresql.connect();
+
   try {
-    const userRoleId = await postgresql
-      .query("SELECT id FROM roles WHERE lower(name) = lower('user')")
-      .then((res) => res.rows[0].id);
-    const newUser = await postgresql
-      .query(
-        "INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, nickname, name, surname, birthdate",
-        [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
-      )
-      .then((res) => res.rows[0]);
+    await client.query("BEGIN");
+
+    const existingUser = await client.query(
+      "SELECT null FROM users WHERE email = $1 or nickname = $2",
+      [email, nickname]
+    );
+
+    if (existingUser.rowCount > 0) {
+      await client.query("ROLLBACK");
+      return res
+        .status(400)
+        .send(
+          "Пользователь с указанными email или nickname уже зарегистрирован"
+        );
+    }
+
+    const userRoleRes = await client.query(
+      "SELECT id FROM roles WHERE lower(name) = lower('user')"
+    );
+
+    const userRoleId = userRoleRes.rows[0]?.id;
+
+    if (!userRoleId) {
+      await client.query("ROLLBACK");
+      return res.status(500).send("Роль 'user' не найдена в базе данных");
+    }
+
+    const hashedPswd = await bcrypt.hash(password, Number(PSWD_HASH_ROUNDS));
+
+    const newUserRes = await client.query(
+      `INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, email, nickname, name, surname, birthdate`,
+      [email, nickname, hashedPswd, name, surname, birthdate, userRoleId]
+    );
+
+    const newUser = newUserRes.rows[0];
+
+    await client.query("COMMIT");
+
+    // Публикуем событие только после успешного коммита
     sendToRabbitEchange("billing_events", "user.created", {
       userId: newUser.id,
     });
+
     return res.status(201).json(newUser);
   } catch (error) {
-    return res.status(400).send(error.message);
+    await client.query("ROLLBACK");
+    console.error("Ошибка регистрации:", error);
+    return res.status(500).send("Ошибка при регистрации пользователя");
+  } finally {
+    client.release();
   }
 });
 
@@ -171,6 +200,30 @@ app.get("/v1/validate", (req, res) => {
     res.status(401).send(err.message);
   }
 });
+
+app.get("/v1/users/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const result = await postgresql.query(
+      `SELECT u.id, u.email, u.nickname, u.name, u.surname, u.birthdate, r.name
+       FROM users u JOIN roles r ON r.id = u.roleid
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).send("Пользователь не найден");
+    }
+
+    const user = result.rows[0];
+    return res.json(user);
+  } catch (error) {
+    console.error("Ошибка при получении пользователя:", error.message);
+    return res.status(500).send("Внутренняя ошибка сервера");
+  }
+});
+
 
 // SERVICE START
 app.listen(APP_PORT, () =>
