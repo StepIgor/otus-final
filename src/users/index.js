@@ -224,6 +224,32 @@ app.get("/v1/users/:id", async (req, res) => {
   }
 });
 
+app.get("/v1/me", async (req, res) => {
+  const userId = req.header("X-User-Id");
+
+  if (!userId) {
+    return res.status(400).send("Заголовок X-User-Id отсутствует");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT u.id, u.email, u.nickname, u.name, u.surname, u.birthdate, r.name "rolename"
+       FROM users u JOIN roles r ON r.id = u.roleid
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).send("Пользователь не найден");
+    }
+
+    const user = result.rows[0];
+    return res.json(user);
+  } catch (error) {
+    console.error("Ошибка при получении текущего пользователя:", error.message);
+    return res.status(500).send("Внутренняя ошибка сервера");
+  }
+});
 
 // SERVICE START
 app.listen(APP_PORT, () =>
