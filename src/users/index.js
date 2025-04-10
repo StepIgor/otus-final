@@ -37,11 +37,11 @@ app.use(
   })
 );
 
-const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, ACCESS_JWT_SECRET, {
+const generateTokens = (userId, userRoleName) => {
+  const accessToken = jwt.sign({ userId, userRoleName }, ACCESS_JWT_SECRET, {
     expiresIn: "15m",
   });
-  const refreshToken = jwt.sign({ userId }, REFRESH_JWT_SECRET, {
+  const refreshToken = jwt.sign({ userId, userRoleName }, REFRESH_JWT_SECRET, {
     expiresIn: "7d",
   });
   redis.set(`refresh:${refreshToken}`, userId, "EX", 60 * 60 * 24 * 7); // 7 дней (seconds)
@@ -147,7 +147,10 @@ app.post("/v1/login", async (req, res) => {
     return res.status(400).send("Не указаны реквизиты: login, password");
   }
   const user = await postgresql
-    .query("SELECT * FROM users WHERE email = $1 OR nickname = $1", [login])
+    .query(
+      'SELECT u.id, u.nickname, r.name "rolename", u.password_hash FROM users u JOIN roles r on r.id = u.roleid WHERE u.email = $1 OR u.nickname = $1',
+      [login]
+    )
     .then((res) => res.rows[0]);
   if (!user) {
     return res.status(400).send("Пользователь не обнаружен");
@@ -155,13 +158,13 @@ app.post("/v1/login", async (req, res) => {
   if (!(await bcrypt.compare(password, user.password_hash))) {
     return res.status(400).send("Указан неверный пароль");
   }
-  const { accessToken, refreshToken } = generateTokens(user.id);
+  const { accessToken, refreshToken } = generateTokens(user.id, user.rolename);
   return res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
       path: "/auth/refresh-token",
     })
-    .json({ accessToken });
+    .json({ accessToken, login: user.nickname, rolename: user.rolename });
 });
 
 app.post("/v1/refresh-token", async (req, res) => {
@@ -175,7 +178,8 @@ app.post("/v1/refresh-token", async (req, res) => {
     }
 
     const { accessToken, refreshToken: newRefresh } = generateTokens(
-      payload.userId
+      payload.userId,
+      payload.userRoleName
     );
     return res
       .cookie("refreshToken", newRefresh, {
@@ -195,7 +199,10 @@ app.get("/v1/validate", (req, res) => {
   const token = authHeader.split(" ")[1];
   try {
     const payload = jwt.verify(token, ACCESS_JWT_SECRET);
-    return res.setHeader("X-User-Id", payload.userId).sendStatus(200);
+    return res
+      .setHeader("X-User-Id", payload.userId)
+      .setHeader("X-User-Role-Name", payload.userRoleName)
+      .sendStatus(200);
   } catch (err) {
     res.status(401).send(err.message);
   }

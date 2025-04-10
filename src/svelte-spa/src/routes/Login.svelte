@@ -1,8 +1,8 @@
 <script>
   import { API_PATH } from "../lib/common";
-  import { accessToken } from "../stores/auth";
+  import { accessToken, userLogin, userRoleName } from "../stores/auth";
   import { push } from "svelte-spa-router";
-  import {onMount} from 'svelte';
+  import { onMount } from "svelte";
 
   let errorText = "";
   let login = "";
@@ -10,7 +10,7 @@
 
   onMount(() => {
     if ($accessToken) {
-      push('/account');
+      push("/account");
     }
   });
 
@@ -33,7 +33,10 @@
         errorText = await query.text();
         return;
       }
-      accessToken.set(await query.json().then((res) => res.accessToken));
+      const authInfoJson = await query.json();
+      accessToken.set(authInfoJson.accessToken);
+      userLogin.set(authInfoJson.login);
+      userRoleName.set(authInfoJson.rolename);
       push("/account");
     } catch (err) {
       errorText = err.message;
