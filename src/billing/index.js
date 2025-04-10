@@ -167,6 +167,40 @@ app.get("/v1/transactions", async (req, res) => {
   }
 });
 
+app.post("/v1/deposit", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const { amount, uuid } = req.body;
+
+  if (!userId) {
+    return res.status(400).send("Заголовок X-User-Id обязателен");
+  }
+
+  if (!uuid) {
+    return res.status(400).send("uuid обязателен");
+  }
+
+  if (typeof amount !== "number" || amount <= 0) {
+    return res.status(400).send("Сумма должна быть положительным числом");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `INSERT INTO billingevents (id, userid, type, amount, description)
+       VALUES ($1, $2, 'DEPOSIT', $3, $4) ON CONFLICT DO NOTHING
+       RETURNING id, amount, createdate`,
+      [uuid, userId, amount, "Пополнение счета"]
+    );
+
+    return res.status(201).json({
+      message: "Баланс успешно пополнен",
+      transaction: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Ошибка при пополнении баланса:", error.message);
+    return res.status(500).send("Ошибка сервера при пополнении");
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Users service running on port ${APP_PORT}`)
