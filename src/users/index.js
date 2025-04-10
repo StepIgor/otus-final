@@ -258,6 +258,70 @@ app.get("/v1/me", async (req, res) => {
   }
 });
 
+app.put("/v1/me", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const { name, surname, birthdate } = req.body;
+
+  if (!userId) {
+    return res.status(400).send("Заголовок X-User-Id обязателен");
+  }
+
+  if (!name || !surname || !birthdate) {
+    return res
+      .status(400)
+      .send("Отсутствуют обязательные поля: name, surname, birthdate");
+  }
+
+  const client = await postgresql.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `UPDATE users
+       SET name = $1, surname = $2, birthdate = $3
+       WHERE id = $4
+       RETURNING id, email, nickname, name, surname, birthdate`,
+      [name, surname, birthdate, userId]
+    );
+
+    if (result.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).send("Пользователь не найден");
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Ошибка при обновлении профиля:", error.message);
+    return res.status(500).send("Ошибка при обновлении данных пользователя");
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/v1/logout", async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (refreshToken) {
+    try {
+      await redis.del(`refresh:${refreshToken}`);
+    } catch (err) {
+      console.error("Ошибка при удалении refresh-токена из Redis:", err);
+    }
+  }
+
+  return res
+    .clearCookie("refreshToken", {
+      httpOnly: true,
+      path: "/auth/refresh-token",
+    })
+    .status(200)
+    .send("Выход выполнен успешно");
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Users service running on port ${APP_PORT}`)

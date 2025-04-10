@@ -18,13 +18,29 @@
   let depositUuid;
   let depositErrorText = "";
 
+  onMount(async () => {
+    if (!$accessToken) {
+      push("/login");
+      return;
+    }
+
+    //parse user info
+    const currentUserQuery = await apiFetch("api/users/v1/me");
+    if (currentUserQuery.status === 401 || !$accessToken) {
+      push("/login");
+      return;
+    }
+    currentUser = await currentUserQuery.json();
+    getBillingInfo();
+  });
+
   async function submitDeposit() {
     depositErrorText = "";
     if (!depositAmount || isNaN(depositAmount) || depositAmount < 0) {
       depositErrorText = "Проверьте корректность указанной суммы";
       return;
     }
-    const depositQuery = await apiFetch("/api/billing/v1/deposit", {
+    const depositQuery = await apiFetch("api/billing/v1/deposit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uuid: depositUuid, amount: depositAmount }),
@@ -50,28 +66,18 @@
     isDepositModalOpened = true;
   }
 
-  onMount(async () => {
-    if (!$accessToken) {
-      push("/login");
-      return;
-    }
-
-    //parse user info
-    const currentUserQuery = await apiFetch("/api/users/v1/me");
-    if (currentUserQuery.status === 401 || !$accessToken) {
-      push("/login");
-      return;
-    }
-    currentUser = await currentUserQuery.json();
-    getBillingInfo();
-  });
-
   async function getBillingInfo() {
     //parse billing info
     [userBalance, userTransactions] = await Promise.all([
-      apiFetch("/api/billing/v1/balance").then((res) => res.json()),
-      apiFetch("/api/billing/v1/transactions").then((res) => res.json()),
+      apiFetch("api/billing/v1/balance").then((res) => res.json()),
+      apiFetch("api/billing/v1/transactions").then((res) => res.json()),
     ]);
+  }
+
+  async function logout() {
+    await apiFetch("api/users/v1/logout", { method: "POST" });
+    accessToken.set(null);
+    push("/login");
   }
 </script>
 
@@ -162,6 +168,8 @@
       {/if}
     </table>
   </div>
+
+  <button class="outline secondary" on:click={logout}>Выйти из аккаунта</button>
 </main>
 
 <style>
