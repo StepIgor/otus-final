@@ -13,7 +13,15 @@ helm install rabbitmq bitnami/rabbitmq -f values/rabbitmq_common_values.yaml
 ```
 kubectl apply -f manifests/
 ```
-4. Установка NGINX Gateway из своего helm-чарта
+4. Подготовка SSL-сертификатов для NGINX Gateway
+```
+kubectl create secret tls nginx-tls --cert=arch.homework.pem --key=arch.homework-key.pem
+```
+5. Установка NGINX Gateway из своего helm-чарта
 ```
 helm install nginx-gateway src/gateway
+```
+6. Проброс портов к Gateway для работы https (чтобы стоковый Ingress Minikube не делал подмену сертификата)
+```
+kubectl port-forward svc/gateway-service 8443:443
 ```

@@ -19,9 +19,16 @@ spec:
             - name: nginx-volume
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
+            - name: tls-certs
+              mountPath: /etc/nginx/tls
+              readOnly: true
+
           ports:
-            - containerPort: 80
+            - containerPort: 443
       volumes:
         - name: nginx-volume
           configMap:
             name: gateway-configmap
+        - name: tls-certs
+          secret:
+            secretName: nginx-tls

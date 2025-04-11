@@ -1,1 +1,1 @@
-export const API_PATH = 'http://arch.homework';
+export const API_PATH = 'https://arch.homework:8443';

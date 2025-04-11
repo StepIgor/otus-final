@@ -30,12 +30,6 @@ const postgresql = new Pool({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
 
 const generateTokens = (userId, userRoleName) => {
   const accessToken = jwt.sign({ userId, userRoleName }, ACCESS_JWT_SECRET, {

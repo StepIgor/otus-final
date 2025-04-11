@@ -24,12 +24,6 @@ const postgresql = new Pool({
 });
 
 app.use(express.json());
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
 
 // Отправка сообщений в RabbitMQ
 async function sendToRabbitEchange(exchange, routingKey, message) {
