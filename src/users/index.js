@@ -162,7 +162,9 @@ app.post("/v1/login", async (req, res) => {
   return res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      path: "/auth/refresh-token",
+      path: "/",
+      sameSite: "none",
+      secure: true,
     })
     .json({ accessToken, login: user.nickname, rolename: user.rolename });
 });
@@ -184,7 +186,9 @@ app.post("/v1/refresh-token", async (req, res) => {
     return res
       .cookie("refreshToken", newRefresh, {
         httpOnly: true,
-        path: "/auth/refresh-token",
+        path: "/",
+        sameSite: "none",
+        secure: true,
       })
       .json({ accessToken });
   } catch (err) {
@@ -316,7 +320,7 @@ app.post("/v1/logout", async (req, res) => {
   return res
     .clearCookie("refreshToken", {
       httpOnly: true,
-      path: "/auth/refresh-token",
+      path: "/",
     })
     .status(200)
     .send("Выход выполнен успешно");
