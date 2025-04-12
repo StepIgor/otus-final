@@ -315,6 +315,8 @@ app.post("/v1/logout", async (req, res) => {
     .clearCookie("refreshToken", {
       httpOnly: true,
       path: "/",
+      sameSite: "none",
+      secure: true,
     })
     .status(200)
     .send("Выход выполнен успешно");

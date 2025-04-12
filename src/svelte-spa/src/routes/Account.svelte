@@ -75,7 +75,10 @@
   }
 
   async function logout() {
-    await apiFetch("api/users/v1/logout", { method: "POST" });
+    await apiFetch("api/users/v1/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     accessToken.set(null);
     push("/login");
   }

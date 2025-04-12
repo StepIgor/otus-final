@@ -39,6 +39,7 @@
   .subtitle {
     font-size: 24px;
     color: var(--pico-secondary);
+    text-align: center;
   }
 
   .acc-btn {
