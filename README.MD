@@ -1,5 +1,5 @@
 **Порядок установки (Kubernetes + Helm, namespace любой свой)**
-1. Разворачивание БД сервисов (PostgreSQL)
+1. Разворачивание БД сервисов (PostgreSQL на каждый, общий Redis)
 ```
 helm install users-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install billing-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
