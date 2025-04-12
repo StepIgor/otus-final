@@ -56,7 +56,8 @@ spec:
               VALUES (1, 'admin'), (2, 'user'), (3, 'seller')
               ON CONFLICT (id) DO NOTHING;
               
-              INSERT INTO users ("id", "email", "nickname", "password_hash", "name", "surname", "birhdate", "roleid")
-              values (1, 'official-publisher@difres.ru', 'offpub', '$2b$10$7Qx0wM7MfO7Dr.0dEyUwXeZxk.0Je/KoAGz1BkHmwCb2QU9GfHsqG', 'Official', 'Publisher', '1993-01-02', 3);
+              INSERT INTO users ("email", "nickname", "password_hash", "name", "surname", "birthdate", "roleid")
+              VALUES ('official-publisher@difres.ru', 'offpub', '$2b$10$7Qx0wM7MfO7Dr.0dEyUwXeZxk.0Je/KoAGz1BkHmwCb2QU9GfHsqG', 'Official', 'Publisher', '1993-01-02', 3)
+              ON CONFLICT DO NOTHING;
               " | psql
       restartPolicy: OnFailure
