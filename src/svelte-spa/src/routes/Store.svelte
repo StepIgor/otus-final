@@ -48,27 +48,39 @@
       maxlength="32"
       bind:value={search}
       placeholder="Поиск по названию/описанию"
+      on:change={setProducts}
     />
-    <input type="number" bind:value={minPrice} placeholder="Мин. цена" />
-    <input type="number" bind:value={maxPrice} placeholder="Макс. цена" />
+    <input
+      type="number"
+      bind:value={minPrice}
+      placeholder="Мин. цена"
+      on:change={setProducts}
+    />
+    <input
+      type="number"
+      bind:value={maxPrice}
+      placeholder="Макс. цена"
+      on:change={setProducts}
+    />
     <label>
-      <input type="checkbox" bind:checked={digital} />
+      <input type="checkbox" bind:checked={digital} on:change={setProducts} />
       Цифровая версия
     </label>
     <label>
-      <input type="checkbox" bind:checked={physical} />
+      <input type="checkbox" bind:checked={physical} on:change={setProducts} />
       Физическая копия
     </label>
   </div>
+  <span>Найдено результатов: {products?.length || 0}</span>
   <div class="products-container">
-    <span>Найдено результатов: {products?.length || 0}</span>
     {#each products as prod}
-      {#if prod}
-        <div in:fly={{ y: 25, duration: 2 }} class="prod-tile">
-          <span>{prod.title}</span>
-          <span>{prod.description}</span>
-        </div>
-      {/if}
+      <article class="prod-tile">
+        <h3>{prod.title}</h3>
+        <div>{prod.description}</div>
+        <button on:click={() => push(`/store/product/${prod.id}`)}>
+          {prod.price} ₽
+        </button>
+      </article>
     {/each}
   </div>
 </main>
@@ -92,21 +104,22 @@
     gap: 16px;
   }
   .products-container {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    justify-content: start;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
     width: 100%;
     padding: 0 78px;
-    gap: 16px;
+  }
+  .prod-tile h3 {
+    color: var(--pico-primary);
   }
   .prod-tile {
     display: flex;
+    justify-content: space-between;
     flex-direction: column;
-    align-items: start;
-    justify-content: start;
-    width: 100%;
-    gap: 16px;
+  }
+  .prod-tile > button {
+    margin-top: 24px;
   }
   .filters-container > input[type="text"] {
     width: 350px;
