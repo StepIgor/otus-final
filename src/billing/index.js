@@ -239,7 +239,7 @@ app.post("/v1/deposit", async (req, res) => {
 
 // SERVICE START
 app.listen(APP_PORT, () =>
-  console.log(`Users service running on port ${APP_PORT}`)
+  console.log(`Billing service running on port ${APP_PORT}`)
 );
 
 await subscribeToUserCreated();

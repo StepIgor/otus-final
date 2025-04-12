@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: store-deploy
+  template:
+    metadata:
+      labels:
+        app: store-deploy
+    spec:
+      containers:
+        - name: store-deploy
+          image: stepigor/ofstore:arm
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: APP_PORT
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PORT
+            - name: REDIS_PSWD
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PSWD
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_NAME
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_PORT
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PSWD
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_PSWD
+            - name: POSTGRES_PSWD
+              valueFrom:
+                secretKeyRef:
+                  name: store-secret
+                  key: POSTGRES_PSWD

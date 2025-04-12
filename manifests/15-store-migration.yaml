@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: store-postgre-migration
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: store-secret
+                  key: POSTGRES_PSWD
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_HOST
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_USER
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: POSTGRES_NAME
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "
+              CREATE TABLE IF NOT EXISTS products (
+                id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                type TEXT CHECK (type IN ('digital', 'physical')) NOT NULL,
+                price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+                sellerid INT NOT NULL,
+                systemrequirements TEXT NOT NULL,
+                createdate TIMESTAMP DEFAULT now() NOT NULL
+              );
+              INSERT INTO products (title, description, type, price, sellerid, systemrequirements)
+              VALUES
+                ('CyberHacker 2077', 'Футуристический взлом мира', 'digital', 1999.99, 1, 'Windows 10, GTX 1060, 8GB RAM'),
+                ('OfficePro USB Edition', 'Офисный пакет на флешке', 'physical', 1499.00, 1, 'Windows 10, GTX 1060, 8GB RAM'),
+                ('PixelShooter', 'Аркадный шутер с пиксельной графикой', 'digital', 499.00, 1, 'Windows 7+, 2GB RAM'),
+                ('Sky Wars: Space Conflict', 'Эпическая космическая стратегия с мультиплеером', 'digital', 1799.99, 1, 'Windows 10, 8GB RAM, GTX 1050'),
+                ('GameDev IDE USB Edition', 'Флешка с IDE для разработчиков игр + бонусный контент', 'physical', 1299.00, 1, 'Windows/macOS/Linux'),
+                ('PaintMonster', 'Мультяшный аркадный платформер', 'digital', 399.00, 1, 'Windows 7+, 2GB RAM'),
+                ('Quiet Typing', 'Ритмичная игра о печатании текста под музыку', 'digital', 499.99, 1, 'Windows 10, любой процессор, 512MB RAM'),
+                ('Hacker Simulator Collector''s Edition', 'Коробка с книгой, наклейками и лицензией на игру', 'physical', 2199.00, 1, 'Windows 10, любой процессор, 512MB RAM'),
+                ('RetroCity 3D', 'Пиксельный 3D-экшен в духе старой школы', 'digital', 649.00, 1, 'Windows 10, DirectX 11, 4GB RAM'),
+                ('SuperCode USB Kit', 'Программирование на C++ в коробке с уроками и флешкой', 'physical', 899.00, 1, 'Windows 10, любой процессор, 512MB RAM'),
+                ('Sky Fortress', 'Онлайн PvP-шутер с воздушными замками и кастомизацией', 'digital', 1599.00, 1, 'Windows 11, RTX 2060, 16GB RAM')
+              ON CONFLICT DO NOTHING;
+              " | psql
+      restartPolicy: OnFailure
