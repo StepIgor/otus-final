@@ -6,12 +6,14 @@
     import Register from './routes/Register.svelte';
     import Account from './routes/Account.svelte';
     import NotFound from './routes/NotFound.svelte';
+    import Store from './routes/Store.svelte';
   
     const routes = {
       '/': Index,
       '/login': Login,
       '/register': Register,
       '/account': Account,
+      '/store': Store,
       '*': NotFound
     };
   </script>

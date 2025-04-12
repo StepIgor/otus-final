@@ -18,6 +18,7 @@
   <a href="#/account" class:active={$currentHash === "#/account"}>
     {$userLogin}
   </a>
+  <a href="#/store" class:active={$currentHash === "#/store"}>Магазин</a>
 </div>
 
 <style>

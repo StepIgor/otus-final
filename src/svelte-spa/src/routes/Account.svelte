@@ -27,6 +27,7 @@
     //parse user info
     const currentUserQuery = await apiFetch("api/users/v1/me");
     if (currentUserQuery.status === 401 || !$accessToken) {
+      accessToken.set(null);
       push("/login");
       return;
     }
@@ -46,6 +47,7 @@
       body: JSON.stringify({ uuid: depositUuid, amount: depositAmount }),
     });
     if (depositQuery.status === 401 || !$accessToken) {
+      accessToken.set(null);
       push("/login");
       return;
     }
