@@ -25,6 +25,40 @@ const postgresql = new Pool({
 
 app.use(express.json());
 
+// обновление баланса пользователя в Redis
+async function updateUserRedisBalance(userId, newBalance) {
+  if (!userId) {
+    return;
+  }
+  try {
+    if (newBalance) {
+      await redis.set(`balance:${userId}`, newBalance);
+      return;
+    }
+    const postgreBalance = await postgresql
+      .query(
+        `
+      SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN type = 'DEPOSIT' THEN amount
+            WHEN type = 'REFUND' THEN amount
+            WHEN type = 'PURCHASE' THEN -amount
+            ELSE 0
+          END
+        ), 0) AS balance
+      FROM billingevents
+      WHERE userid = $1
+      `,
+        [userId]
+      )
+      .then((res) => res.rows[0].balance);
+    await redis.set(`balance:${userId}`, postgreBalance);
+  } catch (error) {
+    console.error("Ошибка при обнолвении баланса в Redis:", error.message);
+  }
+}
+
 // Отправка сообщений в RabbitMQ
 async function sendToRabbitEchange(exchange, routingKey, message) {
   try {
@@ -110,6 +144,11 @@ app.get("/v1/balance", async (req, res) => {
   }
 
   try {
+    const cachedBalance = await redis.get(`balance:${userId}`);
+    if (cachedBalance !== null) {
+      return res.json({ userId, balance: Number(cachedBalance) });
+    }
+
     const result = await postgresql.query(
       `
       SELECT
@@ -128,6 +167,7 @@ app.get("/v1/balance", async (req, res) => {
     );
 
     const balance = result.rows[0].balance;
+    updateUserRedisBalance(userId, balance);
 
     return res.json({ userId, balance });
   } catch (error) {
@@ -184,6 +224,8 @@ app.post("/v1/deposit", async (req, res) => {
        RETURNING id, amount, createdate`,
       [uuid, userId, amount, "Пополнение счета"]
     );
+
+    updateUserRedisBalance(userId);
 
     return res.status(201).json({
       message: "Баланс успешно пополнен",
