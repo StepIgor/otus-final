@@ -7,6 +7,7 @@
     import Account from './routes/Account.svelte';
     import NotFound from './routes/NotFound.svelte';
     import Store from './routes/Store.svelte';
+    import Product from './routes/Product.svelte';
   
     const routes = {
       '/': Index,
@@ -14,6 +15,7 @@
       '/register': Register,
       '/account': Account,
       '/store': Store,
+      '/store/product/:id': Product,
       '*': NotFound
     };
   </script>

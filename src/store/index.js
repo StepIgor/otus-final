@@ -91,6 +91,34 @@ app.get("/v1/products", async (req, res) => {
   }
 });
 
+app.get("/v1/products/:id", async (req, res) => {
+  const { id } = req.params;
+
+  // Проверка, что id — число
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).send("Некорректный id продукта");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT id, title, description, type, price, sellerid, systemrequirements, createdate
+       FROM products
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).send("Продукт не найден");
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Ошибка при получении продукта:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Store service running on port ${APP_PORT}`)
