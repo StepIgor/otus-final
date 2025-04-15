@@ -72,6 +72,40 @@ app.get("/v1/orders", async (req, res) => {
   }
 });
 
+app.post("/v1/orders", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const { productid } = req.body;
+
+  // Проверки
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(401).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (!productid || isNaN(Number(productid))) {
+    return res.status(400).send("Неверный или отсутствующий productid");
+  }
+
+  try {
+    const order = await postgresql.query(
+      `INSERT INTO orders (userid, productid, status, comment)
+       VALUES ($1, $2, 'processing', 'Заказ создан. Ожидается бронирование лицензии')
+       RETURNING id, userid, productid, status, comment`,
+      [userId, productid]
+    ).then(res => res.rows[0]);
+    sendToRabbitEchange("store_events", "order.created", {
+      orderId: order.id,
+      userId: order.userid,
+      productId: order.productid,
+    });
+
+    return res.status(201).json(order);
+  } catch (error) {
+    console.error("Ошибка при создании заказа:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+
 
 // SERVICE START
 app.listen(APP_PORT, () =>
