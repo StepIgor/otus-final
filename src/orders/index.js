@@ -48,6 +48,58 @@ async function sendToRabbitEchange(exchange, routingKey, message) {
   }
 }
 
+async function subscribeToOrderUpdated() {
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("orders_events", "topic", { durable: true });
+  await channel.assertQueue("orders_order_updated", { durable: true });
+  await channel.bindQueue(
+    "orders_order_updated",
+    "orders_events",
+    "orders.updated"
+  );
+
+  channel.consume("orders_order_updated", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const {
+        orderId,
+        status,
+        comment,
+        sellerId,
+        licenseId,
+        productId,
+        price,
+      } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        await client.query(
+          "UPDATE orders SET status = $1, comment = $2, sellerid = $3, licenseid = $4, productid = $5, price = $6 WHERE id = $7",
+          [status, comment, sellerId, licenseId, productId, price, orderId]
+        );
+
+        await client.query("COMMIT");
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
 // ENDPOINTS
 app.get("/v1/orders", async (req, res) => {
   const userId = req.header("X-User-Id");
@@ -86,12 +138,14 @@ app.post("/v1/orders", async (req, res) => {
   }
 
   try {
-    const order = await postgresql.query(
-      `INSERT INTO orders (userid, productid, status, comment)
-       VALUES ($1, $2, 'processing', 'Заказ создан. Ожидается бронирование лицензии')
+    const order = await postgresql
+      .query(
+        `INSERT INTO orders (userid, productid, status)
+       VALUES ($1, $2, 'processing')
        RETURNING id, userid, productid, status, comment`,
-      [userId, productid]
-    ).then(res => res.rows[0]);
+        [userId, productid]
+      )
+      .then((res) => res.rows[0]);
     sendToRabbitEchange("store_events", "order.created", {
       orderId: order.id,
       userId: order.userid,
@@ -105,9 +159,9 @@ app.post("/v1/orders", async (req, res) => {
   }
 });
 
-
-
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Orders service running on port ${APP_PORT}`)
 );
+
+subscribeToOrderUpdated();

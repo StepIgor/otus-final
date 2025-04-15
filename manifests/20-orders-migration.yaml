@@ -40,6 +40,8 @@ spec:
                 id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                 userid INT NOT NULL,
                 productid INT NOT NULL,
+                licenseid INT,
+                sellerid INT,
                 price INT,
                 status VARCHAR(16) CHECK (status IN ('processing', 'pending', 'cancelled', 'done')) NOT NULL,
                 comment VARCHAR(128),

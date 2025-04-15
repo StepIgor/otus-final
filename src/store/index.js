@@ -47,6 +47,87 @@ async function sendToRabbitEchange(exchange, routingKey, message) {
   }
 }
 
+async function subscribeToOrderCreated() {
+  // бронирование лицензии на продукт при заведении заказа
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("store_events", "topic", { durable: true });
+  await channel.assertQueue("store_order_created", { durable: true });
+  await channel.bindQueue(
+    "store_order_created",
+    "store_events",
+    "order.created"
+  );
+
+  channel.consume("store_order_created", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const { userId, orderId, productId } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        const freeLicense = await client
+          .query(
+            "SELECT productid, licenseid FROM licenses WHERE productid = $1 AND userid is null LIMIT 1",
+            [productId]
+          )
+          .then((res) => res.rows[0]);
+
+        if (!freeLicense) {
+          sendToRabbitEchange("orders_events", "orders.updated", {
+            orderId,
+            productId,
+            status: "cancelled",
+            comment: "Нет свободных лицензий",
+          });
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
+        await client.query(
+          "UPDATE licenses SET userid = $1 WHERE productid = $2 and licenseid = $3",
+          [userId, productId, freeLicense.licenseid]
+        );
+
+        const product = await client
+          .query("SELECT sellerid, price, type FROM products WHERE id = $1", [
+            productId,
+          ])
+          .then((res) => res.rows[0]);
+
+        await client.query("COMMIT");
+
+        sendToRabbitEchange("billing_events", "orders.created", {
+          orderId,
+          userId,
+          productId,
+          sellerId: product.sellerId,
+          productType: product.type,
+          productPrice: product.price,
+          licenseId: freeLicense.licenseid,
+        });
+
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
 // ENDPOINTS
 app.get("/v1/products", async (req, res) => {
   const { search, type, minPrice, maxPrice } = req.query;
@@ -118,8 +199,9 @@ app.get("/v1/products/:id", async (req, res) => {
   }
 });
 
-
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Store service running on port ${APP_PORT}`)
 );
+
+subscribeToOrderCreated();
