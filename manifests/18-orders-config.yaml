@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+data:
+  POSTGRES_USER: "postgres"
+  POSTGRES_HOST: "orders-postgresql"
+  POSTGRES_NAME: "db"
+  POSTGRES_PORT: "5432"
+  APP_PORT: "8080"

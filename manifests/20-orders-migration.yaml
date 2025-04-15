@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orders-postgre-migration
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orders-secret
+                  key: POSTGRES_PSWD
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: orders-config
+                  key: POSTGRES_HOST
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: orders-config
+                  key: POSTGRES_USER
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: orders-config
+                  key: POSTGRES_NAME
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "
+              CREATE TABLE IF NOT EXISTS orders (
+                id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                userid INT NOT NULL,
+                productid INT NOT NULL,
+                price INT,
+                status VARCHAR(16) CHECK (status IN ('created', 'processing', 'pending', 'cancelled')) NOT NULL,
+                comment VARCHAR(128),
+                createdate TIMESTAMP DEFAULT now() NOT NULL
+              );
+              " | psql
+      restartPolicy: OnFailure
