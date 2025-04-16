@@ -38,7 +38,7 @@ spec:
               echo "
               CREATE TABLE IF NOT EXISTS products (
                 id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                title TEXT NOT NULL,
+                title TEXT NOT NULL UNIQUE,
                 description TEXT NOT NULL,
                 type TEXT CHECK (type IN ('digital', 'physical')) NOT NULL,
                 price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
@@ -50,6 +50,7 @@ spec:
                 productid INT,
                 licenseid INT,
                 userid INT,
+                orderid INT,
                 PRIMARY KEY (productid, licenseid),
                 FOREIGN KEY (productid) REFERENCES products(id) ON DELETE CASCADE
               );

@@ -71,6 +71,24 @@ async function subscribeToOrderCreated() {
       try {
         await client.query("BEGIN");
 
+        const alreadyTakenLicense = await client
+          .query(
+            "SELECT 1 FROM licenses WHERE productid = $1 AND userid = $2 AND orderid != $3",
+            [productId, userId, orderId]
+          )
+          .then((res) => res.rows[0]);
+        if (alreadyTakenLicense) {
+          sendToRabbitEchange("orders_events", "orders.updated", {
+            orderId,
+            productId,
+            status: "cancelled",
+            comment: "Лицензия уже забронирована в рамках иного заказа",
+          });
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
         const freeLicense = await client
           .query(
             "SELECT productid, licenseid FROM licenses WHERE productid = $1 AND userid is null LIMIT 1",
@@ -91,8 +109,8 @@ async function subscribeToOrderCreated() {
         }
 
         await client.query(
-          "UPDATE licenses SET userid = $1 WHERE productid = $2 and licenseid = $3",
-          [userId, productId, freeLicense.licenseid]
+          "UPDATE licenses SET userid = $1, orderid = $2 WHERE productid = $3 and licenseid = $4",
+          [userId, orderId, productId, freeLicense.licenseid]
         );
 
         const product = await client
