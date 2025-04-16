@@ -114,23 +114,89 @@ async function subscribeToOrderCreated() {
         );
 
         const product = await client
-          .query("SELECT sellerid, price, type FROM products WHERE id = $1", [
-            productId,
-          ])
+          .query(
+            "SELECT sellerid, price, type, title FROM products WHERE id = $1",
+            [productId]
+          )
           .then((res) => res.rows[0]);
 
         await client.query("COMMIT");
 
         sendToRabbitEchange("billing_events", "orders.created", {
+          uuid: uuidv4(),
           orderId,
           userId,
           productId,
           sellerId: product.sellerId,
           productType: product.type,
           productPrice: product.price,
+          productTitle: product.title,
           licenseId: freeLicense.licenseid,
         });
 
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
+async function subscribeToOrderUpdated() {
+  // снятие брони на лицензию при неудачной оплате
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("store_events", "topic", { durable: true });
+  await channel.assertQueue("store_order_updated", { durable: true });
+  await channel.bindQueue(
+    "store_order_updated",
+    "store_events",
+    "orders.updated"
+  );
+
+  channel.consume("store_order_updated", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const {
+        uuid,
+        orderId,
+        userId,
+        productId,
+        sellerId,
+        productType,
+        productPrice,
+        productTitle,
+        licenseId,
+        status,
+        comment,
+      } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        await client.query(
+          "UPDATE licenses SET userid = null, orderid = null WHERE productid = $1 AND licenseid = $2 AND userid = $3 AND orderid = $4",
+          [productId, licenseId, userId, orderId]
+        );
+
+        await client.query("COMMIT");
+        sendToRabbitEchange("orders_events", "orders.updated", {
+          orderId,
+          productId,
+          status,
+          comment,
+        });
         channel.ack(msg);
       } catch (err) {
         await client.query("ROLLBACK");
@@ -223,3 +289,4 @@ app.listen(APP_PORT, () =>
 );
 
 subscribeToOrderCreated();
+subscribeToOrderUpdated();

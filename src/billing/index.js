@@ -25,19 +25,7 @@ const postgresql = new Pool({
 
 app.use(express.json());
 
-// обновление баланса пользователя в Redis
-async function updateUserRedisBalance(userId, newBalance) {
-  if (!userId) {
-    return;
-  }
-  try {
-    if (newBalance) {
-      await redis.set(`balance:${userId}`, newBalance);
-      return;
-    }
-    const postgreBalance = await postgresql
-      .query(
-        `
+const USER_BALANCE_QUERY_TEXT = `
       SELECT
         COALESCE(SUM(
           CASE
@@ -49,11 +37,26 @@ async function updateUserRedisBalance(userId, newBalance) {
         ), 0) AS balance
       FROM billingevents
       WHERE userid = $1
-      `,
-        [userId]
-      )
-      .then((res) => res.rows[0].balance);
-    await redis.set(`balance:${userId}`, postgreBalance);
+      `;
+
+async function getUserBalance(userId) {
+  return await postgresql
+    .query(USER_BALANCE_QUERY_TEXT, [userId])
+    .then((res) => res.rows[0].balance);
+}
+
+// обновление баланса пользователя в Redis
+async function updateUserRedisBalance(userId, newBalance) {
+  if (!userId) {
+    return;
+  }
+  try {
+    if (newBalance) {
+      await redis.set(`balance:${userId}`, newBalance);
+      return;
+    }
+    const userBalance = await getUserBalance(userId);
+    await redis.set(`balance:${userId}`, userBalance);
   } catch (error) {
     console.error("Ошибка при обнолвении баланса в Redis:", error.message);
   }
@@ -135,6 +138,127 @@ async function subscribeToUserCreated() {
   });
 }
 
+async function subscribeToOrderCreated() {
+  // попытка списания средств за заказ
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("billing_events", "topic", { durable: true });
+  await channel.assertQueue("billing_order_created", { durable: true });
+  await channel.bindQueue(
+    "billing_order_created",
+    "billing_events",
+    "orders.created"
+  );
+
+  channel.consume("billing_order_created", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const {
+        uuid,
+        orderId,
+        userId,
+        productId,
+        sellerId,
+        productType,
+        productPrice,
+        productTitle,
+        licenseId,
+      } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        const theSameUuidEvent = await client
+          .query("SELECT 1 FROM billingevents WHERE id = $1", [uuid])
+          .then((res) => res.rows[0]);
+        if (theSameUuidEvent) {
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
+        const userBalance = await client
+          .query(USER_BALANCE_QUERY_TEXT, [userId])
+          .then((res) => res.rows[0].balance);
+
+        if (Number(userBalance) < Number(productPrice)) {
+          sendToRabbitEchange("store_events", "orders.updated", {
+            uuid,
+            orderId,
+            userId,
+            productId,
+            sellerId,
+            productType,
+            productPrice,
+            productTitle,
+            licenseId,
+            status: "cancelled",
+            comment: "Недостаточно средств на балансе",
+          });
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
+        await client.query(
+          "INSERT INTO billingevents (id, userid, type, amount, description) VALUES ($1, $2, $3, $4, $5)",
+          [
+            uuid,
+            userId,
+            "PURCHASE",
+            productPrice,
+            `Приобретение ${productTitle}`,
+          ]
+        );
+        await client.query("COMMIT");
+
+        if (productType === "physical") {
+          // заказ должен перевести в готовность Издатель
+          sendToRabbitEchange("orders_events", "orders.updated", {
+            orderId,
+            userId,
+            productId,
+            sellerId,
+            price: productPrice,
+            licenseId,
+            status: "pending",
+            comment: "Ожидание подтверждения отправки копии издателем",
+          });
+        } else {
+          // осталось добавить товар в библиотеку пользователя
+          sendToRabbitEchange("library_events", "orders.created", {
+            uuid,
+            orderId,
+            userId,
+            productId,
+            sellerId,
+            productType,
+            productPrice,
+            productTitle,
+            licenseId,
+          });
+        }
+        updateUserRedisBalance(userId);
+
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
 // ENDPOINTS
 app.get("/v1/balance", async (req, res) => {
   const userId = req.header("X-User-Id");
@@ -149,24 +273,7 @@ app.get("/v1/balance", async (req, res) => {
       return res.json({ userId, balance: Number(cachedBalance) });
     }
 
-    const result = await postgresql.query(
-      `
-      SELECT
-        COALESCE(SUM(
-          CASE
-            WHEN type = 'DEPOSIT' THEN amount
-            WHEN type = 'REFUND' THEN amount
-            WHEN type = 'PURCHASE' THEN -amount
-            ELSE 0
-          END
-        ), 0) AS balance
-      FROM billingevents
-      WHERE userid = $1
-      `,
-      [userId]
-    );
-
-    const balance = result.rows[0].balance;
+    const balance = await getUserBalance(userId);
     updateUserRedisBalance(userId, balance);
 
     return res.json({ userId, balance });
@@ -242,4 +349,5 @@ app.listen(APP_PORT, () =>
   console.log(`Billing service running on port ${APP_PORT}`)
 );
 
-await subscribeToUserCreated();
+subscribeToUserCreated();
+subscribeToOrderCreated();
