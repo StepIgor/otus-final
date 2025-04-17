@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: library-postgre-migration
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: library-secret
+                  key: POSTGRES_PSWD
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: library-config
+                  key: POSTGRES_HOST
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: library-config
+                  key: POSTGRES_USER
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: library-config
+                  key: POSTGRES_NAME
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "
+              CREATE TABLE IF NOT EXISTS library (
+                userid INT,
+                productid INT,
+                licenseid INT,
+                PRIMARY KEY (userid, productid, licenseid)
+              );
+              " | psql
+      restartPolicy: OnFailure
