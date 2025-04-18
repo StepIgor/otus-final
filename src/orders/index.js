@@ -126,7 +126,7 @@ app.get("/v1/orders", async (req, res) => {
 
 app.post("/v1/orders", async (req, res) => {
   const userId = req.header("X-User-Id");
-  const { productid } = req.body;
+  const { productid, requestId } = req.body;
 
   // Проверки
   if (!userId || isNaN(Number(userId))) {
@@ -137,7 +137,29 @@ app.post("/v1/orders", async (req, res) => {
     return res.status(400).send("Неверный или отсутствующий productid");
   }
 
+  if (!requestId || typeof requestId !== "string") {
+    return res.status(400).send("Отсутствует requestId");
+  }
+
+  const redisKey = `order:req:${requestId}`;
+
   try {
+    // Проверка, был ли уже такой запрос
+    const existingOrderId = await redis.get(redisKey);
+
+    if (existingOrderId) {
+      const order = await postgresql
+        .query(
+          `SELECT id, userid, productid, status, comment
+           FROM orders
+           WHERE id = $1`,
+          [existingOrderId]
+        )
+        .then((res) => res.rows[0]);
+
+      if (order) return res.status(200).json(order);
+    }
+
     const order = await postgresql
       .query(
         `INSERT INTO orders (userid, productid, status)
@@ -146,6 +168,10 @@ app.post("/v1/orders", async (req, res) => {
         [userId, productid]
       )
       .then((res) => res.rows[0]);
+
+    // Сохраняем UUID → orderId в Redis (на 24 часа)
+    await redis.set(redisKey, order.id, "EX", 60 * 60 * 24);
+
     sendToRabbitEchange("store_events", "order.created", {
       orderId: order.id,
       userId: order.userid,
