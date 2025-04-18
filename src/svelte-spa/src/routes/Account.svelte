@@ -12,6 +12,7 @@
   let currentUser;
   let userBalance;
   let userTransactions;
+  let userOrders;
 
   let isDepositModalOpened = false;
   let depositAmount = 0;
@@ -33,6 +34,7 @@
     }
     currentUser = await currentUserQuery.json();
     getBillingInfo();
+    getUserOrders();
   });
 
   async function submitDeposit() {
@@ -74,6 +76,25 @@
       apiFetch("api/billing/v1/balance").then((res) => res.json()),
       apiFetch("api/billing/v1/transactions").then((res) => res.json()),
     ]);
+  }
+
+  async function getUserOrders() {
+    userOrders = await apiFetch("api/orders/v1/orders").then((res) =>
+      res.json()
+    );
+  }
+
+  function getOrderStatusTranslation(status) {
+    switch (status?.toLowerCase()) {
+      case "done":
+        return "Завершён";
+      case "cancelled":
+        return "Отменён";
+      case "pending":
+        return "Ожидается";
+      default:
+        return "В обработке";
+    }
   }
 
   async function logout() {
@@ -174,6 +195,36 @@
     </table>
   </div>
 
+  <div class="block billing-info-block">
+    <div class="title-one-line">
+      <span>Заказы</span>
+    </div>
+    <table>
+      <thead>
+        <tr
+          ><td>Номер</td><td>Дата</td><td>Статус</td><td>Комментарий</td><td
+            >Цена</td
+          ></tr
+        >
+      </thead>
+      {#if userOrders?.length}
+        <tbody in:fade>
+          {#each userOrders as order}
+            <tr>
+              <td>{order.id}</td>
+              <td>{new Date(order.createdate).toLocaleString("ru-RU")}</td>
+              <td class={order.status}>
+                {getOrderStatusTranslation(order.status)}
+              </td>
+              <td>{order.comment}</td>
+              <td>{order.price || "N/A"}</td>
+            </tr>
+          {/each}
+        </tbody>
+      {/if}
+    </table>
+  </div>
+
   <button class="outline secondary" on:click={logout}>Выйти из аккаунта</button>
 </main>
 
@@ -197,13 +248,17 @@
   .block span > span {
     color: var(--pico-primary);
   }
-  .purchase {
+  .purchase,
+  .cancelled {
     color: red;
   }
-  .deposit {
+  .deposit,
+  .done {
     color: green;
   }
-  .refund {
+  .refund,
+  .pending,
+  .processing {
     color: orange;
   }
 
