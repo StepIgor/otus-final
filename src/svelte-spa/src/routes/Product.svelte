@@ -4,9 +4,14 @@
   import { fade, fly } from "svelte/transition";
   import { accessToken } from "../stores/auth";
   import { apiFetch } from "../lib/apiFetch";
+  import { v4 as uuidv4 } from "uuid";
 
   let productInfo;
   let sellerInfo;
+  let userOwnedProducts;
+  let newOrderUuid = uuidv4();
+  let isPurchaseBtnLocked = false;
+  let isPurchaseBtnLoading = false;
 
   $: if ($params?.id) {
     setProductInfo();
@@ -22,6 +27,7 @@
       push("/notfound");
       return;
     }
+    await setUserOwnedProducts();
     productInfo = await query.json();
     setSellerInfo();
   }
@@ -34,6 +40,56 @@
     if (query.ok) {
       sellerInfo = await query.json();
     }
+  }
+
+  async function setUserOwnedProducts() {
+    userOwnedProducts = await apiFetch("api/library/v1/products").then((res) =>
+      res.json()
+    );
+  }
+
+  function getPriceBtnText(productId, price) {
+    if (isPurchaseBtnLocked) {
+      return "Заказ оформлен";
+    }
+    return userOwnedProducts?.some(
+      (prod) => Number(prod.productid) === Number(productId)
+    )
+      ? "Приобретено"
+      : `${price} ₽`;
+  }
+
+  function getPriceBtnClass(productId) {
+    return userOwnedProducts?.some(
+      (prod) => Number(prod.productid) === Number(productId)
+    )
+      ? "contrast"
+      : "primary";
+  }
+
+  async function onPurchaseBtnClick() {
+    if (
+      isPurchaseBtnLocked ||
+      userOwnedProducts?.some(
+        (prod) => Number(prod.productid) === productInfo?.id
+      )
+    ) {
+      return;
+    }
+    isPurchaseBtnLoading = true;
+    const newOrder = await apiFetch("api/orders/v1/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productid: productInfo?.id,
+        requestId: newOrderUuid,
+      }),
+    });
+    if (newOrder.ok) {
+      isPurchaseBtnLoading = false;
+      isPurchaseBtnLocked = true;
+    }
+    isPurchaseBtnLoading = false;
   }
 </script>
 
@@ -56,7 +112,17 @@
               : "Физическая копия"}
           </div>
         </div>
-        <div><button>{productInfo.price} ₽</button></div>
+        <div>
+          <button
+            disabled={isPurchaseBtnLocked}
+            aria-busy={isPurchaseBtnLoading}
+            aria-label="Заказ оформляется..."
+            class={getPriceBtnClass(productInfo.id)}
+            on:click={onPurchaseBtnClick}
+          >
+            {getPriceBtnText(productInfo.id, productInfo.price)}
+          </button>
+        </div>
       </div>
     </article>
     <article in:fade>
