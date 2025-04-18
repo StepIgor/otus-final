@@ -16,6 +16,8 @@
   let maxPrice;
   let [physical, digital] = [true, true];
 
+  let userOwnedProducts;
+
   async function setProducts() {
     const uriParams = new URLSearchParams();
     uriParams.set("search", search);
@@ -36,7 +38,30 @@
       accessToken.set(null);
       push("/login");
     }
+    await setUserOwnedProducts();
     products = await query.json();
+  }
+
+  async function setUserOwnedProducts() {
+    userOwnedProducts = await apiFetch("api/library/v1/products").then((res) =>
+      res.json()
+    );
+  }
+
+  function getPriceBtnText(productId, price) {
+    return userOwnedProducts?.some(
+      (prod) => Number(prod.productid) === Number(productId)
+    )
+      ? "Приобретено"
+      : `${price} ₽`;
+  }
+
+  function getPriceBtnClass(productId) {
+    return userOwnedProducts?.some(
+      (prod) => Number(prod.productid) === Number(productId)
+    )
+      ? "contrast"
+      : "primary";
   }
 </script>
 
@@ -77,8 +102,11 @@
       <article class="prod-tile">
         <h3>{prod.title}</h3>
         <div>{prod.description}</div>
-        <button on:click={() => push(`/store/product/${prod.id}`)}>
-          {prod.price} ₽
+        <button
+          class={getPriceBtnClass(prod.id)}
+          on:click={() => push(`/store/product/${prod.id}`)}
+        >
+          {getPriceBtnText(prod.id, prod.price)}
         </button>
       </article>
     {/each}
