@@ -82,6 +82,14 @@
     userOrders = await apiFetch("api/orders/v1/orders").then((res) =>
       res.json()
     );
+    userOrders = await Promise.all(
+      userOrders.map(async (order) => {
+        const productInfo = await apiFetch(
+          `api/store/v1/products/${order.productid}`
+        ).then((res) => res.json());
+        return { ...order, productInfo };
+      })
+    );
   }
 
   function getOrderStatusTranslation(status) {
@@ -201,11 +209,14 @@
     </div>
     <table>
       <thead>
-        <tr
-          ><td>Номер</td><td>Дата</td><td>Статус</td><td>Комментарий</td><td
-            >Цена</td
-          ></tr
-        >
+        <tr>
+          <td>Номер</td>
+          <td>Дата</td>
+          <td>Статус</td>
+          <td>Товар</td>
+          <td>Комментарий</td>
+          <td>Цена</td>
+        </tr>
       </thead>
       {#if userOrders?.length}
         <tbody in:fade>
@@ -215,6 +226,11 @@
               <td>{new Date(order.createdate).toLocaleString("ru-RU")}</td>
               <td class={order.status}>
                 {getOrderStatusTranslation(order.status)}
+              </td>
+              <td>
+                <a href={`#/store/product/${order.productid}`}>
+                  {order.productInfo?.title}
+                </a>
               </td>
               <td>{order.comment}</td>
               <td>{order.price || "N/A"}</td>
