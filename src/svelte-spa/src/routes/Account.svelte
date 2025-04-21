@@ -19,13 +19,23 @@
   let depositUuid;
   let depositErrorText = "";
 
+  let isPersonalInfoEditModalOpened = false;
+  let personalInfoEditUuid;
+  let [newName, newSurname, newBirthdate] = ["", "", null];
+  let personalInfoEditErrorText = "";
+
   onMount(async () => {
     if (!$accessToken) {
       push("/login");
       return;
     }
 
-    //parse user info
+    await setCurrentUser();
+    getBillingInfo();
+    getUserOrders();
+  });
+
+  async function setCurrentUser() {
     const currentUserQuery = await apiFetch("api/users/v1/me");
     if (currentUserQuery.status === 401 || !$accessToken) {
       accessToken.set(null);
@@ -33,9 +43,7 @@
       return;
     }
     currentUser = await currentUserQuery.json();
-    getBillingInfo();
-    getUserOrders();
-  });
+  }
 
   async function submitDeposit() {
     depositErrorText = "";
@@ -61,6 +69,29 @@
     getBillingInfo();
   }
 
+  async function submitPersonalInfoEdit() {
+    personalInfoEditErrorText = "";
+    if (!newName || !newSurname || !newBirthdate) {
+      personalInfoEditErrorText = "Все поля обязательны для заполнения";
+      return;
+    }
+    const query = await apiFetch("api/users/v1/me", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newName,
+        surname: newSurname,
+        birthdate: new Date(newBirthdate).toLocaleDateString("en-CA"),
+      }),
+    });
+    if (!query.ok) {
+      personalInfoEditErrorText = await query.text();
+      return;
+    }
+    setCurrentUser();
+    closePersonalInfoEditModal();
+  }
+
   function closeDepositModal() {
     isDepositModalOpened = false;
   }
@@ -68,6 +99,18 @@
     depositUuid = uuidv4();
     depositErrorText = "";
     isDepositModalOpened = true;
+  }
+
+  function closePersonalInfoEditModal() {
+    isPersonalInfoEditModalOpened = false;
+  }
+  function openPersonalInfoEditModal() {
+    personalInfoEditUuid = uuidv4();
+    personalInfoEditErrorText = "";
+    isPersonalInfoEditModalOpened = true;
+    newName = currentUser.name;
+    newSurname = currentUser.surname;
+    newBirthdate = new Date(currentUser.birthdate).toLocaleDateString("en-CA");
   }
 
   async function getBillingInfo() {
@@ -140,11 +183,55 @@
   </div>
 {/if}
 
+{#if isPersonalInfoEditModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="deposit-overlay"
+    on:click|self={closePersonalInfoEditModal}
+  >
+    <div class="modal">
+      <h2>Изменить информацию о себе</h2>
+      <input
+        type="text"
+        bind:value={newName}
+        maxlength="64"
+        placeholder="Имя"
+      />
+      <input
+        type="text"
+        bind:value={newSurname}
+        maxlength="64"
+        placeholder="Фамилия"
+      />
+      <input
+        type="date"
+        bind:value={newBirthdate}
+        placeholder="Дата рождения"
+      />
+      {#if personalInfoEditErrorText}
+        <span class="error">{personalInfoEditErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button on:click={submitPersonalInfoEdit}>Сохранить</button>
+        <button class="outline secondary" on:click={closePersonalInfoEditModal}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <main class="blocks-container">
   <NavMenu />
   {#if currentUser}
     <div in:fade class="block user-info-block">
-      <span>Информация о <span>{currentUser.nickname}</span></span>
+      <div class="title-one-line">
+        <span>Информация о <span>{currentUser.nickname}</span></span>
+        <button on:click={openPersonalInfoEditModal}>Изменить</button>
+      </div>
       <table>
         <tbody>
           <tr>
