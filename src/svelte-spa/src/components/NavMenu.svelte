@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
-  import { userLogin } from "../stores/auth";
+  import { userLogin, userRoleName } from "../stores/auth";
 
   const currentHash = writable("");
 
@@ -18,6 +18,9 @@
   <a href="#/account" class:active={$currentHash === "#/account"}>
     {$userLogin}
   </a>
+  {#if $userRoleName === "seller"}
+    <a href="#/seller" class:active={$currentHash === "#/seller"}>Издатель</a>
+  {/if}
   <a href="#/store" class:active={$currentHash === "#/store"}>Магазин</a>
   <a href="#/library" class:active={$currentHash === "#/library"}>Библиотека</a>
 </div>

@@ -9,6 +9,7 @@
     import Store from './routes/Store.svelte';
     import Product from './routes/Product.svelte';
     import Library from './routes/Library.svelte';
+    import Seller from './routes/Seller.svelte';
   
     const routes = {
       '/': Index,
@@ -18,6 +19,7 @@
       '/store': Store,
       '/store/product/:id': Product,
       '/library': Library,
+      '/seller': Seller,
       '*': NotFound
     };
   </script>
