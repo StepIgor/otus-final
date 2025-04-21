@@ -292,7 +292,7 @@
 
   <div class="block billing-info-block">
     <div class="title-one-line">
-      <span>Заказы</span>
+      <span>Заказы ({userOrders?.length || 0})</span>
     </div>
     <table>
       <thead>

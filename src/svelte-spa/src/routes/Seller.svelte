@@ -10,6 +10,7 @@
   import NavMenu from "../components/NavMenu.svelte";
 
   let pendingOrders = [];
+  let sellerProducts = [];
 
   onMount(() => {
     if ($userRoleName !== "seller") {
@@ -17,6 +18,7 @@
       return;
     }
     setPendingOrders();
+    setSellerProducts();
   });
 
   async function setPendingOrders() {
@@ -41,6 +43,17 @@
     );
   }
 
+  async function setSellerProducts() {
+    const query = await apiFetch("api/store/v1/seller/products");
+    if (query.status === 401) {
+      push("/login");
+      return;
+    }
+    sellerProducts = await query
+      .json()
+      .then((res) => res.toSorted((a, b) => a.title?.localeCompare(b.title)));
+  }
+
   async function completeOrder(id) {
     await apiFetch(`api/orders/v1/seller/orders/${id}/complete`, {
       method: "PUT",
@@ -61,7 +74,7 @@
 <main class="blocks-container">
   <NavMenu />
   <div in:fade class="block orders-info-block">
-    <span>Заказы, ожидающие действий</span>
+    <span>Заказы, ожидающие действий ({pendingOrders?.length || 0})</span>
     <table>
       <thead>
         <tr>
@@ -121,6 +134,60 @@
       </tbody>
     </table>
   </div>
+  <div in:fade class="block products-info-block">
+    <span>Опубликованные товары ({sellerProducts?.length || 0})</span>
+    <table>
+      <thead>
+        <tr>
+          <td>ID</td>
+          <td>Дата публикации</td>
+          <td>Название</td>
+          <td>Тип</td>
+          <td>Цена</td>
+          <td>Действие</td>
+        </tr>
+      </thead>
+      <tbody>
+        {#if sellerProducts?.length}
+          {#each sellerProducts as prod}
+            <tr>
+              <td>{prod.id}</td>
+              <td>{new Date(prod.createdate).toLocaleString("ru-RU")}</td>
+              <td>
+                <a href={`#/store/product/${prod.id}`}>
+                  {prod.title}
+                </a>
+              </td>
+              <td>
+                {#if prod.type === "physical"}
+                  <span title="Физическая копия" style="cursor:default">💿</span
+                  >
+                {:else}
+                  <span title="Цифровая копия" style="cursor:default">⬇️</span>
+                {/if}
+              </td>
+              <td class="active">{prod.price}</td>
+              <td>
+                <details class="dropdown">
+                  <summary>...</summary>
+                  <ul>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                    <li>📝 Редактировать</li>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                    <li>🔑 Проверить лицензии</li>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                  </ul>
+                </details>
+              </td>
+            </tr>
+          {/each}
+        {/if}
+      </tbody>
+    </table>
+  </div>
 </main>
 
 <style>
@@ -145,5 +212,9 @@
   }
   li:hover {
     background: var(--pico-text-selection-color);
+  }
+  .active {
+    color: var(--pico-primary);
+    font-weight: 200;
   }
 </style>
