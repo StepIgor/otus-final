@@ -30,7 +30,7 @@
         ).then((res) => res.json());
         return { ...prod, ...productStoreInfo };
       })
-    );
+    ).then((res) => res.toSorted((a, b) => a.title?.localeCompare(b.title)));
   }
 </script>
 
@@ -55,6 +55,7 @@
                   on:click={() => (detailedInfoProductId = prod.id)}
                 >
                   <td class:active={prod.id === detailedInfoProductId}>
+                    {prod.type === "physical" ? "💿" : ""}
                     {prod.title}
                   </td>
                 </tr>
@@ -75,6 +76,8 @@
                   <summary role="button" class="outline secondary">
                     ...
                   </summary>
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                   <ul
                     on:click={() =>
                       push(`/store/product/${chosenProductInfo.id}`)}
@@ -82,7 +85,16 @@
                     Открыть в магазине
                   </ul>
                 </details>
-                <button>Запустить</button>
+                {#if chosenProductInfo.type === "digital"}
+                  <button>Запустить</button>
+                {:else}
+                  <details class="dropdown">
+                    <summary role="button" class="secondary"> Показать ключ </summary>
+                    <ul>
+                      {chosenProductInfo.licenseid}
+                    </ul>
+                  </details>
+                {/if}
               </div>
             </div>
             <div class="prod-detail-description">
