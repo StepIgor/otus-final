@@ -250,17 +250,25 @@ app.put("/v1/seller/orders/:id/complete", async (req, res) => {
     }
 
     // Обновляем статус и комментарий
-    const result = await client.query(
-      `UPDATE orders
+    const result = await client
+      .query(
+        `UPDATE orders
        SET status = 'done',
            comment = 'Копия доставлена покупателю'
        WHERE id = $1
-       RETURNING id, userid, productid, status, comment, createdate`,
-      [orderId]
-    );
+       RETURNING id, userid, productid, licenseid, status, comment, createdate`,
+        [orderId]
+      )
+      .then((res) => res.rows[0]);
 
     await client.query("COMMIT");
-    return res.status(200).json(result.rows[0]);
+    // фиксируем физическую лицензию за покупателем
+    sendToRabbitEchange("library_events", "orders.completed", {
+      userId: result.userid,
+      productId: result.productid,
+      licenseId: result.licenseid,
+    });
+    return res.status(200).json(result);
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Ошибка при подтверждении доставки:", error);

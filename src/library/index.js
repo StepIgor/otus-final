@@ -117,8 +117,65 @@ async function subscribeToOrderCreated() {
           price: productPrice,
           licenseId,
           status: "done",
-          comment: "Продукт уже в вашей библиотеке",
+          comment: "Продукт добавлен в библиотеку",
         });
+        await client.query("COMMIT");
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
+async function subscribeToOrderCompleted() {
+  // регистрация лицензии на физический товар (заказ уже завершён)
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("library_events", "topic", { durable: true });
+  await channel.assertQueue("library_order_completed", { durable: true });
+  await channel.bindQueue(
+    "library_order_completed",
+    "library_events",
+    "orders.completed"
+  );
+
+  channel.consume("library_order_completed", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const { userId, productId, licenseId } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        const sameLicenseAdded = await client
+          .query(
+            "SELECT 1 FROM library WHERE userid = $1 AND productid = $2 AND licenseid = $3",
+            [userId, productId, licenseId]
+          )
+          .then((res) => res.rows[0]);
+
+        if (sameLicenseAdded) {
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
+        await client.query(
+          "INSERT INTO library (userid, productid, licenseid) VALUES ($1, $2, $3)",
+          [userId, productId, licenseId]
+        );
         await client.query("COMMIT");
         channel.ack(msg);
       } catch (err) {
@@ -164,3 +221,4 @@ app.listen(APP_PORT, () =>
 );
 
 subscribeToOrderCreated();
+subscribeToOrderCompleted();
