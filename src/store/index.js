@@ -315,6 +315,245 @@ app.get("/v1/seller/products", async (req, res) => {
   }
 });
 
+app.put("/v1/seller/products/:id", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+  const productId = req.params.id;
+  const { title, description, price, systemrequirements } = req.body;
+
+  // Проверка доступа
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (!productId || isNaN(Number(productId))) {
+    return res.status(400).send("Некорректный id продукта");
+  }
+
+  // Проверка тела запроса
+  if (!title || !description || !price || !systemrequirements) {
+    return res
+      .status(400)
+      .send(
+        "Не все поля заполнены (title, description, price, systemrequirements)"
+      );
+  }
+
+  try {
+    // Проверка принадлежности товара
+    const check = await postgresql.query(
+      `SELECT id FROM products WHERE id = $1 AND sellerid = $2`,
+      [productId, userId]
+    );
+
+    if (check.rowCount === 0) {
+      return res.status(403).send("Продукт не найден или не принадлежит вам");
+    }
+
+    const sameNameProduct = await postgresql
+      .query("SELECT 1 FROM products WHERE title = $1 AND id != $2", [
+        title,
+        productId,
+      ])
+      .then((res) => res.rows[0]);
+
+    if (sameNameProduct) {
+      return res
+        .status(400)
+        .send("Товар с таким наименованием уже представлен в каталоге");
+    }
+
+    // Обновление товара
+    const result = await postgresql.query(
+      `UPDATE products
+       SET title = $1,
+           description = $2,
+           price = $3,
+           systemrequirements = $4
+       WHERE id = $5
+       RETURNING id, title, description, type, price, systemrequirements, createdate`,
+      [title, description, price, systemrequirements, productId]
+    );
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Ошибка при обновлении продукта:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.post("/v1/seller/products", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+
+  const { title, description, type, price, systemrequirements } = req.body;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (
+    !title ||
+    !description ||
+    !type ||
+    !price ||
+    !systemrequirements ||
+    !["digital", "physical"].includes(type)
+  ) {
+    return res
+      .status(400)
+      .send(
+        "Отсутствуют или некорректны обязательные поля (title, description, type: digital/physical, price, systemrequirements)"
+      );
+  }
+
+  try {
+    const result = await postgresql.query(
+      `INSERT INTO products
+         (title, description, type, price, sellerid, systemrequirements)
+       VALUES
+         ($1, $2, $3, $4, $5, $6)
+       RETURNING id, title, description, type, price, sellerid, systemrequirements, createdate`,
+      [title, description, type, price, userId, systemrequirements]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    if (error.code === "23505") {
+      // unique_violation (например, title уже существует)
+      return res.status(409).send("Продукт с таким названием уже существует");
+    }
+
+    console.error("Ошибка при добавлении продукта:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.post("/v1/seller/products/:id/licenses", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+  const productId = req.params.id;
+  const { amount } = req.body;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (!productId || isNaN(Number(productId))) {
+    return res.status(400).send("Некорректный productId");
+  }
+
+  if (!amount || isNaN(Number(amount)) || amount < 1) {
+    return res.status(400).send("Неверное значение amount");
+  }
+
+  const client = await postgresql.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Проверка, что товар принадлежит продавцу
+    const productCheck = await client.query(
+      `SELECT id FROM products WHERE id = $1 AND sellerid = $2`,
+      [productId, userId]
+    );
+
+    if (productCheck.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(403).send("Продукт не найден или не принадлежит вам");
+    }
+
+    // Получаем последнее значение licenseid
+    const last = await client.query(
+      `SELECT MAX(licenseid) AS max FROM licenses WHERE productid = $1`,
+      [productId]
+    );
+
+    const startFrom = (last.rows[0]?.max || 0) + 1;
+    const values = [];
+
+    for (let i = 0; i < amount; i++) {
+      values.push(`(${productId}, ${startFrom + i})`);
+    }
+
+    const insertSQL = `
+      INSERT INTO licenses (productid, licenseid)
+      VALUES ${values.join(", ")}
+      ON CONFLICT DO NOTHING
+    `;
+
+    await client.query(insertSQL);
+
+    await client.query("COMMIT");
+
+    return res.status(201).json({
+      message: `Добавлено ${amount} лицензий к продукту ${productId}`,
+      licenseIds: Array.from({ length: amount }, (_, i) => startFrom + i),
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Ошибка при добавлении лицензий:", error);
+    return res.status(500).send("Ошибка сервера");
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/v1/seller/products/:id/licenses", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+  const productId = req.params.id;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (!productId || isNaN(Number(productId))) {
+    return res.status(400).send("Некорректный productId");
+  }
+
+  try {
+    // Проверка, принадлежит ли продукт продавцу
+    const check = await postgresql.query(
+      `SELECT id FROM products WHERE id = $1 AND sellerid = $2`,
+      [productId, userId]
+    );
+
+    if (check.rowCount === 0) {
+      return res.status(403).send("Продукт не найден или не принадлежит вам");
+    }
+
+    const result = await postgresql.query(
+      `SELECT productid, licenseid, userid, orderid
+       FROM licenses
+       WHERE productid = $1
+       ORDER BY licenseid`,
+      [productId]
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error("Ошибка при получении лицензий:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Store service running on port ${APP_PORT}`)
