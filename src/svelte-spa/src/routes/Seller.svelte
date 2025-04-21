@@ -12,6 +12,14 @@
   let pendingOrders = [];
   let sellerProducts = [];
 
+  let isNewProdModalOpened = false;
+  let newProdTitle = "";
+  let newProdDescription = "";
+  let isNewProdDigital = true;
+  let newProductPrice = null;
+  let newProdSystemRequirements = "";
+  let newProdErrorText = "";
+
   onMount(() => {
     if ($userRoleName !== "seller") {
       push("/account");
@@ -69,7 +77,101 @@
     // обновление идёт через цепочку сервисов с задержкой
     pendingOrders = pendingOrders.filter((order) => order.id !== id);
   }
+
+  function closeNewProductModal() {
+    isNewProdModalOpened = false;
+  }
+  function openNewProductModal() {
+    newProdTitle = "";
+    newProdDescription = "";
+    isNewProdDigital = true;
+    newProductPrice = null;
+    newProdSystemRequirements = "";
+    newProdErrorText = "";
+    isNewProdModalOpened = true;
+  }
+
+  async function submitNewProduct() {
+    if (
+      !newProdTitle ||
+      !newProdDescription ||
+      !newProdSystemRequirements ||
+      !newProductPrice ||
+      isNaN(newProductPrice)
+    ) {
+      newProdErrorText = "Проверьте корректность заполнения всех полей";
+      return;
+    }
+    const query = await apiFetch("api/store/v1/seller/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: newProdTitle,
+        description: newProdDescription,
+        type: isNewProdDigital ? "digital" : "physical",
+        price: newProductPrice,
+        systemrequirements: newProdSystemRequirements,
+      }),
+    });
+    if (!query.ok) {
+      newProdErrorText = await query.text();
+      return;
+    }
+    closeNewProductModal();
+    setSellerProducts();
+  }
 </script>
+
+{#if isNewProdModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="new-product-overlay"
+    on:click|self={closeNewProductModal}
+  >
+    <div class="modal">
+      <h2>Опубликовать новый продукт</h2>
+      <input
+        type="text"
+        bind:value={newProdTitle}
+        maxlength="64"
+        placeholder="Название"
+      />
+      <textarea
+        type="text"
+        bind:value={newProdDescription}
+        maxlength="8096"
+        placeholder="Описание"
+      ></textarea>
+      <label>
+        <input type="checkbox" bind:checked={isNewProdDigital} />
+        Цифровая версия
+      </label>
+      <input
+        type="number"
+        bind:value={newProductPrice}
+        placeholder="Стоимость"
+      />
+      <textarea
+        type="text"
+        bind:value={newProdSystemRequirements}
+        maxlength="2048"
+        placeholder="Системные требования"
+      ></textarea>
+      {#if newProdErrorText}
+        <span class="error">{newProdErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button on:click={submitNewProduct}>Опубликовать</button>
+        <button class="outline secondary" on:click={closeNewProductModal}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <main class="blocks-container">
   <NavMenu />
@@ -135,7 +237,10 @@
     </table>
   </div>
   <div in:fade class="block products-info-block">
-    <span>Опубликованные товары ({sellerProducts?.length || 0})</span>
+    <div class="title-one-line">
+      <span>Опубликованные товары ({sellerProducts?.length || 0})</span>
+      <button on:click={openNewProductModal}>Опубликовать</button>
+    </div>
     <table>
       <thead>
         <tr>
@@ -216,5 +321,48 @@
   .active {
     color: var(--pico-primary);
     font-weight: 200;
+  }
+  .title-one-line {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .new-product-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .new-product-overlay .modal {
+    background: var(--pico-background-color);
+    padding: 24px;
+    border-radius: 12px;
+    width: 50vw;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .new-product-overlay input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    margin: 12px 0;
+    font-size: 1rem;
+  }
+
+  .new-product-overlay .buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+
+  label {
+    margin: 12px 0 24px 0;
+  }
+
+  .error {
+    color: var(--pico-del-color);
   }
 </style>
