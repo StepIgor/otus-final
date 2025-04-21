@@ -259,6 +259,88 @@ async function subscribeToOrderCreated() {
   });
 }
 
+async function subscribeToOrderUpdated() {
+  // продавец отменил заказ по физ. копии на заключительном этапе, откат
+  const connection = await amqplib.connect(RABBIT_URL);
+  const channel = await connection.createChannel();
+
+  await channel.assertExchange("billing_events", "topic", { durable: true });
+  await channel.assertQueue("billing_order_updated", { durable: true });
+  await channel.bindQueue(
+    "billing_order_updated",
+    "billing_events",
+    "orders.updated"
+  );
+
+  channel.consume("billing_order_updated", async (msg) => {
+    if (!msg) return;
+
+    try {
+      const data = JSON.parse(msg.content.toString());
+      const {
+        uuid,
+        orderId,
+        userId,
+        productId,
+        licenseId,
+        sellerId,
+        price,
+        status,
+        comment,
+      } = data;
+
+      const client = await postgresql.connect();
+      try {
+        await client.query("BEGIN");
+
+        const theSameUuidEvent = await client
+          .query("SELECT 1 FROM billingevents WHERE id = $1", [uuid])
+          .then((res) => res.rows[0]);
+        if (theSameUuidEvent) {
+          await client.query("COMMIT");
+          channel.ack(msg);
+          return;
+        }
+
+        await client.query(
+          "INSERT INTO billingevents (id, userid, type, amount, description) VALUES ($1, $2, $3, $4, $5)",
+          [
+            uuid,
+            userId,
+            "REFUND",
+            price,
+            `Возврат средств за заказ №${orderId}`,
+          ]
+        );
+        await client.query("COMMIT");
+        updateUserRedisBalance(userId);
+
+        sendToRabbitEchange("store_events", "orders.updated", {
+          orderId,
+          userId,
+          productId,
+          licenseId,
+          sellerId,
+          productPrice: price,
+          status,
+          comment,
+        });
+
+        channel.ack(msg);
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Ошибка обработки события:", err.message);
+        channel.nack(msg, false, true); // повторить позже (сообщение, применить и на более ранних сообщениях, вернуть в очередь)
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error("Некорректное сообщение:", err.message);
+      channel.nack(msg, false, false); // отбросить
+    }
+  });
+}
+
 // ENDPOINTS
 app.get("/v1/balance", async (req, res) => {
   const userId = req.header("X-User-Id");
@@ -351,3 +433,4 @@ app.listen(APP_PORT, () =>
 
 subscribeToUserCreated();
 subscribeToOrderCreated();
+subscribeToOrderUpdated();

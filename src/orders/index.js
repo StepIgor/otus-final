@@ -185,6 +185,160 @@ app.post("/v1/orders", async (req, res) => {
   }
 });
 
+app.get("/v1/seller/orders/pending", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT id, userid, productid, licenseid, price, comment, createdate
+       FROM orders
+       WHERE sellerid = $1 AND status = 'pending'
+       ORDER BY createdate DESC`,
+      [userId]
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error("Ошибка при получении заказов продавца:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.put("/v1/seller/orders/:id/complete", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+  const orderId = req.params.id;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (!orderId || isNaN(Number(orderId))) {
+    return res.status(400).send("Неверный идентификатор заказа");
+  }
+
+  const client = await postgresql.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Проверяем, принадлежит ли заказ этому продавцу и находится ли в статусе 'pending'
+    const check = await client.query(
+      `SELECT id FROM orders
+       WHERE id = $1 AND sellerid = $2 AND status = 'pending'`,
+      [orderId, userId]
+    );
+
+    if (check.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res
+        .status(404)
+        .send("Заказ не найден или недоступен для обработки");
+    }
+
+    // Обновляем статус и комментарий
+    const result = await client.query(
+      `UPDATE orders
+       SET status = 'done',
+           comment = 'Копия доставлена покупателю'
+       WHERE id = $1
+       RETURNING id, userid, productid, status, comment, createdate`,
+      [orderId]
+    );
+
+    await client.query("COMMIT");
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Ошибка при подтверждении доставки:", error);
+    return res.status(500).send("Ошибка сервера");
+  } finally {
+    client.release();
+  }
+});
+
+app.put("/v1/seller/orders/:id/decline", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+  const orderId = req.params.id;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  if (!orderId || isNaN(Number(orderId))) {
+    return res.status(400).send("Неверный идентификатор заказа");
+  }
+
+  const client = await postgresql.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Проверяем, принадлежит ли заказ этому продавцу и находится ли в статусе 'pending'
+    const order = await client
+      .query(
+        `SELECT id, userid, productid, licenseid, sellerid, price FROM orders
+       WHERE id = $1 AND sellerid = $2 AND status = 'pending'`,
+        [orderId, userId]
+      )
+      .then((res) => res.rows[0]);
+
+    if (!order) {
+      await client.query("ROLLBACK");
+      return res
+        .status(404)
+        .send("Заказ не найден или недоступен для обработки");
+    }
+    await client.query("COMMIT");
+
+    const redisKey = `order:decline_orderid:${orderId}`;
+    const existingOrderId = await redis.get(redisKey);
+    if (existingOrderId) {
+      return res.sendStatus(200);
+    }
+
+    // Откатываем списание денег, снимаем бронь с лицензии. Запись в таблице будет обновлять orders.updated
+    sendToRabbitEchange("billing_events", "orders.updated", {
+      orderId,
+      userId: order.userid,
+      productId: order.productid,
+      licenseId: order.licenseid,
+      sellerId: order.sellerid,
+      price: order.price,
+      uuid: uuidv4(), // refund покупателю
+      status: "cancelled",
+      comment: "Отменён продавцом",
+    });
+    await redis.set(redisKey, orderId, "EX", 60 * 60 * 24);
+
+    return res.sendStatus(200);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Ошибка при отклонении заказа:", error);
+    return res.status(500).send("Ошибка сервера");
+  } finally {
+    client.release();
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Orders service running on port ${APP_PORT}`)

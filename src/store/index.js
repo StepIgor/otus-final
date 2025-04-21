@@ -127,7 +127,7 @@ async function subscribeToOrderCreated() {
           orderId,
           userId,
           productId,
-          sellerId: product.sellerId,
+          sellerId: product.sellerid,
           productType: product.type,
           productPrice: product.price,
           productTitle: product.title,
@@ -194,6 +194,9 @@ async function subscribeToOrderUpdated() {
         sendToRabbitEchange("orders_events", "orders.updated", {
           orderId,
           productId,
+          sellerId,
+          licenseId,
+          price: productPrice,
           status,
           comment,
         });
@@ -279,6 +282,35 @@ app.get("/v1/products/:id", async (req, res) => {
     return res.json(result.rows[0]);
   } catch (error) {
     console.error("Ошибка при получении продукта:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.get("/v1/seller/products", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const role = req.header("X-User-Role-Name");
+
+  // Проверка заголовков
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (role !== "seller") {
+    return res.status(403).send("Доступ разрешён только продавцам");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT id, title, description, type, price, systemrequirements, createdate
+       FROM products
+       WHERE sellerid = $1
+       ORDER BY createdate DESC`,
+      [userId]
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error("Ошибка при получении товаров продавца:", error);
     return res.status(500).send("Ошибка сервера");
   }
 });
