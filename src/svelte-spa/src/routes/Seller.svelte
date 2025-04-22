@@ -11,8 +11,11 @@
 
   let pendingOrders = [];
   let sellerProducts = [];
+  let dropdowns = {};
 
   let isNewProdModalOpened = false;
+  let isEditProdModalOpened = false;
+  let productToEditId = null;
   let newProdTitle = "";
   let newProdDescription = "";
   let isNewProdDigital = true;
@@ -120,6 +123,52 @@
     closeNewProductModal();
     setSellerProducts();
   }
+
+  function closeEditProductModal() {
+    isEditProdModalOpened = false;
+  }
+  function openEditProductModal(prod) {
+    dropdowns[prod.id].open = false;
+    productToEditId = prod.id;
+    newProdTitle = prod.title;
+    newProdDescription = prod.description;
+    newProductPrice = prod.price;
+    newProdSystemRequirements = prod.systemrequirements;
+    newProdErrorText = "";
+    isEditProdModalOpened = true;
+  }
+
+  async function submitEditedProduct() {
+    if (
+      !newProdTitle ||
+      !newProdDescription ||
+      !newProdSystemRequirements ||
+      !newProductPrice ||
+      isNaN(newProductPrice)
+    ) {
+      newProdErrorText = "Проверьте корректность заполнения всех полей";
+      return;
+    }
+    const query = await apiFetch(
+      `api/store/v1/seller/products/${productToEditId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newProdTitle,
+          description: newProdDescription,
+          price: newProductPrice,
+          systemrequirements: newProdSystemRequirements,
+        }),
+      }
+    );
+    if (!query.ok) {
+      newProdErrorText = await query.text();
+      return;
+    }
+    closeEditProductModal();
+    setSellerProducts();
+  }
 </script>
 
 {#if isNewProdModalOpened}
@@ -166,6 +215,53 @@
       <div class="buttons">
         <button on:click={submitNewProduct}>Опубликовать</button>
         <button class="outline secondary" on:click={closeNewProductModal}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if isEditProdModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="new-product-overlay"
+    on:click|self={closeEditProductModal}
+  >
+    <div class="modal">
+      <h2>Редактировать продукт</h2>
+      <input
+        type="text"
+        bind:value={newProdTitle}
+        maxlength="64"
+        placeholder="Название"
+      />
+      <textarea
+        type="text"
+        bind:value={newProdDescription}
+        maxlength="8096"
+        placeholder="Описание"
+      ></textarea>
+      <input
+        type="number"
+        bind:value={newProductPrice}
+        placeholder="Стоимость"
+      />
+      <textarea
+        type="text"
+        bind:value={newProdSystemRequirements}
+        maxlength="2048"
+        placeholder="Системные требования"
+      ></textarea>
+      {#if newProdErrorText}
+        <span class="error">{newProdErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button on:click={submitEditedProduct}>Сохранить</button>
+        <button class="outline secondary" on:click={closeEditProductModal}>
           Отмена
         </button>
       </div>
@@ -273,12 +369,14 @@
               </td>
               <td class="active">{prod.price}</td>
               <td>
-                <details class="dropdown">
+                <details class="dropdown" bind:this={dropdowns[prod.id]}>
                   <summary>...</summary>
                   <ul>
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                    <li>📝 Редактировать</li>
+                    <li on:click={() => openEditProductModal(prod)}>
+                      📝 Редактировать
+                    </li>
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                     <li>🔑 Проверить лицензии</li>
