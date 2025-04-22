@@ -283,6 +283,12 @@ app.put("/v1/seller/orders/:id/complete", async (req, res) => {
       productId: result.productid,
       licenseId: result.licenseid,
     });
+    // уведомляем пользователя
+    sendToRabbitEchange("notifications_events", "notifications.created", {
+      userId: result.userid,
+      uuid: uuidv4(),
+      text: `По заказу #${orderId} есть обновления. Обновлённый статус: "done", комментарий: "Копия доставлена покупателю"`,
+    });
     return res.status(200).json(result);
   } catch (error) {
     await client.query("ROLLBACK");
