@@ -13,6 +13,7 @@
   let userBalance;
   let userTransactions;
   let userOrders;
+  let sessions = [];
 
   let isDepositModalOpened = false;
   let depositAmount = 0;
@@ -31,9 +32,18 @@
     }
 
     await setCurrentUser();
-    getBillingInfo();
-    getUserOrders();
+    setBillingInfo();
+    setUserOrders();
+    setSessionsInfo();
   });
+
+  async function setSessionsInfo() {
+    sessions = await apiFetch("api/users/v1/sessions")
+      .then((res) => res.json())
+      .then((res) =>
+        res.toSorted((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      );
+  }
 
   async function setCurrentUser() {
     const currentUserQuery = await apiFetch("api/users/v1/me");
@@ -66,7 +76,7 @@
       return;
     }
     closeDepositModal();
-    getBillingInfo();
+    setBillingInfo();
   }
 
   async function submitPersonalInfoEdit() {
@@ -113,7 +123,7 @@
     newBirthdate = new Date(currentUser.birthdate).toLocaleDateString("en-CA");
   }
 
-  async function getBillingInfo() {
+  async function setBillingInfo() {
     //parse billing info
     [userBalance, userTransactions] = await Promise.all([
       apiFetch("api/billing/v1/balance").then((res) => res.json()),
@@ -121,7 +131,7 @@
     ]);
   }
 
-  async function getUserOrders() {
+  async function setUserOrders() {
     userOrders = await apiFetch("api/orders/v1/orders").then((res) =>
       res.json()
     );
@@ -150,6 +160,15 @@
 
   async function logout() {
     await apiFetch("api/users/v1/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    accessToken.set(null);
+    push("/login");
+  }
+
+  async function logoutAll() {
+    await apiFetch("api/users/v1/logout-all", {
       method: "POST",
       credentials: "include",
     });
@@ -230,7 +249,7 @@
     <div in:fade class="block user-info-block">
       <div class="title-one-line">
         <span>Информация о <span>{currentUser.nickname}</span></span>
-        <button on:click={openPersonalInfoEditModal}>Изменить</button>
+        <button on:click={openPersonalInfoEditModal}>Изменить ПД</button>
       </div>
       <table>
         <tbody>
@@ -264,6 +283,41 @@
       </table>
     </div>
   {/if}
+
+  <div class="block billing-info-block">
+    <div class="title-one-line">
+      <span>Активные сессии ({sessions?.length || 0})</span>
+      <details class="dropdown">
+        <summary role="button" class="outline secondary"> Закрыть все </summary>
+        <ul style="font-size: 12px;padding: 12px;">
+          Выйти со всех устройств, в т.ч. текущего?<br />Эффект в течение 10
+          минут
+          <button style="margin-top: 12px;" on:click={logoutAll}>Выйти</button>
+        </ul>
+      </details>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <td>Дата входа</td>
+          <td>Устройство</td>
+          <td>IP</td>
+        </tr>
+      </thead>
+      {#if sessions?.length}
+        <tbody in:fade>
+          {#each sessions as session}
+            <tr>
+              <td>{new Date(session.createdAt).toLocaleString("ru-RU")}</td>
+              <td>{session.userAgent}</td>
+              <td>{session.ip}</td>
+            </tr>
+          {/each}
+        </tbody>
+      {/if}
+    </table>
+  </div>
+
   <div class="block billing-info-block">
     <div class="title-one-line">
       <span>Текущий баланс: <span>{userBalance?.balance || 0}</span> ₽</span>
@@ -383,6 +437,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 999;
   }
 
   .deposit-overlay .modal {
