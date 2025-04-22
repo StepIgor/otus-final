@@ -23,6 +23,18 @@
   let newProdSystemRequirements = "";
   let newProdErrorText = "";
 
+  let isLicensesModalOpened = false;
+  let licensesCheckProductId = null;
+  let newLicensesAmount = null;
+  let licensesInfo = [];
+  let licensesModalErrorText = "";
+  $: licenseChosenProductInfo = sellerProducts.find(
+    (prod) => prod.id === licensesCheckProductId
+  );
+  $: registeredLicenses = licensesInfo?.length || 0;
+  $: orderedLicenses =
+    licensesInfo?.filter((lic) => lic.userid !== null)?.length || 0;
+
   onMount(() => {
     if ($userRoleName !== "seller") {
       push("/account");
@@ -169,6 +181,51 @@
     closeEditProductModal();
     setSellerProducts();
   }
+
+  async function setLicensesInfo() {
+    licensesInfo = await apiFetch(
+      `api/store/v1/seller/products/${licensesCheckProductId}/licenses`
+    ).then((res) => res.json());
+  }
+
+  function closeLicensesModal() {
+    isLicensesModalOpened = false;
+  }
+  function openLicensesModal(prod) {
+    dropdowns[prod.id].open = false;
+    newLicensesAmount = null;
+    licensesModalErrorText = "";
+    licensesCheckProductId = prod.id;
+    setLicensesInfo();
+    isLicensesModalOpened = true;
+  }
+
+  async function submitLicesesAddition() {
+    if (
+      !newLicensesAmount ||
+      isNaN(newLicensesAmount) ||
+      !Number.isInteger(newLicensesAmount) ||
+      newLicensesAmount < 0
+    ) {
+      licensesModalErrorText = "Проверьте корректность заполнения количества";
+      return;
+    }
+    const query = await apiFetch(
+      `api/store/v1/seller/products/${licensesCheckProductId}/licenses`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: newLicensesAmount }),
+      }
+    );
+    if (!query.ok) {
+      licensesModalErrorText = await query.text();
+      return;
+    }
+    newLicensesAmount = null;
+    licensesModalErrorText = "";
+    setLicensesInfo();
+  }
 </script>
 
 {#if isNewProdModalOpened}
@@ -177,7 +234,7 @@
   <div
     in:fade
     out:fade
-    class="new-product-overlay"
+    class="modal-overlay"
     on:click|self={closeNewProductModal}
   >
     <div class="modal">
@@ -228,7 +285,7 @@
   <div
     in:fade
     out:fade
-    class="new-product-overlay"
+    class="modal-overlay"
     on:click|self={closeEditProductModal}
   >
     <div class="modal">
@@ -263,6 +320,40 @@
         <button on:click={submitEditedProduct}>Сохранить</button>
         <button class="outline secondary" on:click={closeEditProductModal}>
           Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if isLicensesModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="modal-overlay"
+    on:click|self={closeLicensesModal}
+  >
+    <div class="modal">
+      <h2>Лицензии {licenseChosenProductInfo?.title}</h2>
+      <div>Зарегистрировано: {registeredLicenses}</div>
+      <div>Приобретено: {orderedLicenses}</div>
+      <input
+        type="number"
+        bind:value={newLicensesAmount}
+        min="0"
+        placeholder="Количество новых лицензий"
+      />
+      {#if licensesModalErrorText}
+        <span class="error">{licensesModalErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button disabled={!newLicensesAmount} on:click={submitLicesesAddition}>
+          Добавить лицензии: {newLicensesAmount || 0}
+        </button>
+        <button class="outline secondary" on:click={closeLicensesModal}>
+          Закрыть
         </button>
       </div>
     </div>
@@ -379,7 +470,9 @@
                     </li>
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                    <li>🔑 Проверить лицензии</li>
+                    <li on:click={() => openLicensesModal(prod)}>
+                      🔑 Проверить лицензии
+                    </li>
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                   </ul>
@@ -426,7 +519,7 @@
     justify-content: space-between;
     align-items: center;
   }
-  .new-product-overlay {
+  .modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.9);
@@ -435,7 +528,7 @@
     justify-content: center;
   }
 
-  .new-product-overlay .modal {
+  .modal-overlay .modal {
     background: var(--pico-background-color);
     padding: 24px;
     border-radius: 12px;
@@ -443,14 +536,15 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 
-  .new-product-overlay input[type="text"] {
+  .modal-overlay input[type="text"],
+  .modal-overlay input[type="number"] {
     width: 100%;
     padding: 8px;
     margin: 12px 0;
     font-size: 1rem;
   }
 
-  .new-product-overlay .buttons {
+  .modal-overlay .buttons {
     display: flex;
     justify-content: space-between;
     margin-top: 12px;
