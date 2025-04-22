@@ -73,6 +73,7 @@ async function subscribeToOrderUpdated() {
         licenseId,
         productId,
         price,
+        userId,
       } = data;
 
       const client = await postgresql.connect();
@@ -86,6 +87,20 @@ async function subscribeToOrderUpdated() {
 
         await client.query("COMMIT");
         channel.ack(msg);
+        if (userId) {
+          sendToRabbitEchange("notifications_events", "notifications.created", {
+            userId,
+            uuid: uuidv4(),
+            text: `По заказу #${orderId} есть обновления. Обновлённый статус: "${status}", комментарий: "${comment}"`,
+          });
+        }
+        if (sellerId && status === "pending") {
+          sendToRabbitEchange("notifications_events", "notifications.created", {
+            userId: sellerId,
+            uuid: uuidv4(),
+            text: `Заказ #${orderId} ожидает ваших действий. Актуализируйте его статус в разделе "Издатель"`,
+          });
+        }
       } catch (err) {
         await client.query("ROLLBACK");
         console.error("Ошибка обработки события:", err.message);

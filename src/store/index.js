@@ -81,6 +81,7 @@ async function subscribeToOrderCreated() {
           sendToRabbitEchange("orders_events", "orders.updated", {
             orderId,
             productId,
+            userId,
             status: "cancelled",
             comment: "Лицензия уже забронирована в рамках иного заказа",
           });
@@ -100,6 +101,7 @@ async function subscribeToOrderCreated() {
           sendToRabbitEchange("orders_events", "orders.updated", {
             orderId,
             productId,
+            userId,
             status: "cancelled",
             comment: "Нет свободных лицензий",
           });
@@ -198,6 +200,7 @@ async function subscribeToOrderUpdated() {
           licenseId,
           price: productPrice,
           status,
+          userId,
           comment,
         });
         channel.ack(msg);

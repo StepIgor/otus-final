@@ -124,6 +124,11 @@ async function subscribeToUserCreated() {
 
         await client.query("COMMIT");
         channel.ack(msg);
+        sendToRabbitEchange("notifications_events", "notifications.created", {
+          userId,
+          uuid: uuidv4(),
+          text: "Добро пожаловать! В качестве приветственного бонуса на баланс зачислено 500! Приятных покупок!",
+        });
       } catch (err) {
         await client.query("ROLLBACK");
         console.error("Ошибка обработки события:", err.message);

@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import pg from "pg";
 const { Pool } = pg;
 import Redis from "ioredis";
-import cors from "cors";
+import { v4 as uuidv4 } from "uuid";
 import amqplib from "amqplib";
 
 const APP_PORT = process.env.APP_PORT;
@@ -177,6 +177,11 @@ app.post("/v1/login", async (req, res) => {
     req.headers["user-agent"],
     req.ip
   );
+  sendToRabbitEchange("notifications_events", "notifications.created", {
+    userId: user.id,
+    uuid: uuidv4(),
+    text: `В аккаунт выполнен вход с IP ${req.ip} и устройства "${req.headers["user-agent"]}". Если это были не вы, закройте все сессии на странице аккаунта и смените пароль`,
+  });
   return res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -436,6 +441,12 @@ app.put("/v1/password", async (req, res) => {
       `UPDATE users SET password_hash = $1 WHERE id = $2`,
       [newHash, userId]
     );
+
+    sendToRabbitEchange("notifications_events", "notifications.created", {
+      userId,
+      uuid: uuidv4(),
+      text: `На аккаунте успешно обновлён пароль`,
+    });
 
     return res.status(200).send("Пароль успешно изменён");
   } catch (err) {
