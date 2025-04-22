@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: notifications-postgre-migration
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notifications-secret
+                  key: POSTGRES_PSWD
+            - name: PGHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: notifications-config
+                  key: POSTGRES_HOST
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: notifications-config
+                  key: POSTGRES_USER
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: notifications-config
+                  key: POSTGRES_NAME
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "
+              CREATE TABLE IF NOT EXISTS notifications (
+                id UUID PRIMARY KEY,
+                userid INT NOT NULL,
+                text TEXT NOT NULL,
+                createdate TIMESTAMP DEFAULT now() NOT NULL
+              );
+              " | psql
+      restartPolicy: OnFailure

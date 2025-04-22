@@ -6,6 +6,7 @@ helm install billing-postgresql bitnami/postgresql -f values/postgresql_common_v
 helm install store-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install orders-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install library-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
+helm install notifications-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install common-redis bitnami/redis -f values/redis_common_values.yaml
 ```
 2. Установка RabbitMQ
