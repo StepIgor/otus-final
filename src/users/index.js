@@ -31,14 +31,33 @@ const postgresql = new Pool({
 app.use(express.json());
 app.use(cookieParser());
 
-const generateTokens = (userId, userRoleName) => {
+const generateTokens = (
+  userId,
+  userRoleName,
+  userAgent,
+  ip,
+  newRefreshToken = true
+) => {
   const accessToken = jwt.sign({ userId, userRoleName }, ACCESS_JWT_SECRET, {
-    expiresIn: "15m",
+    expiresIn: "10m",
   });
-  const refreshToken = jwt.sign({ userId, userRoleName }, REFRESH_JWT_SECRET, {
-    expiresIn: "7d",
-  });
-  redis.set(`refresh:${refreshToken}`, userId, "EX", 60 * 60 * 24 * 7); // 7 дней (seconds)
+
+  let refreshToken;
+  if (newRefreshToken) {
+    refreshToken = jwt.sign({ userId, userRoleName }, REFRESH_JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    redis.set(
+      `refresh:${userId}:${refreshToken}`,
+      JSON.stringify({
+        userAgent,
+        ip,
+        createdAt: Date.now(),
+      }),
+      "EX",
+      60 * 60 * 24 * 7
+    ); // 7 дней (seconds)
+  }
   return { accessToken, refreshToken };
 };
 
@@ -152,7 +171,12 @@ app.post("/v1/login", async (req, res) => {
   if (!(await bcrypt.compare(password, user.password_hash))) {
     return res.status(400).send("Указан неверный пароль");
   }
-  const { accessToken, refreshToken } = generateTokens(user.id, user.rolename);
+  const { accessToken, refreshToken } = generateTokens(
+    user.id,
+    user.rolename,
+    req.headers["user-agent"],
+    req.ip
+  );
   return res
     .cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -168,23 +192,19 @@ app.post("/v1/refresh-token", async (req, res) => {
   if (!refreshToken) return res.sendStatus(401);
   try {
     const payload = jwt.verify(refreshToken, REFRESH_JWT_SECRET);
-    const stored = await redis.get(`refresh:${refreshToken}`);
-    if (!stored || Number(stored) !== Number(payload.userId)) {
+    const stored = await redis.get(`refresh:${payload.userId}:${refreshToken}`);
+    if (!stored) {
       return res.sendStatus(403);
     }
 
-    const { accessToken, refreshToken: newRefresh } = generateTokens(
+    const { accessToken } = generateTokens(
       payload.userId,
-      payload.userRoleName
+      payload.userRoleName,
+      req.headers["user-agent"],
+      req.ip,
+      false
     );
-    return res
-      .cookie("refreshToken", newRefresh, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "none",
-        secure: true,
-      })
-      .json({ accessToken });
+    return res.json({ accessToken });
   } catch (err) {
     return res.status(403).send(err.message);
   }
@@ -305,7 +325,9 @@ app.post("/v1/logout", async (req, res) => {
 
   if (refreshToken) {
     try {
-      await redis.del(`refresh:${refreshToken}`);
+      await redis
+        .keys(`refresh:*:${refreshToken}`)
+        .then((keys) => keys.map((key) => redis.del(key)));
     } catch (err) {
       console.error("Ошибка при удалении refresh-токена из Redis:", err);
     }
@@ -320,6 +342,106 @@ app.post("/v1/logout", async (req, res) => {
     })
     .status(200)
     .send("Выход выполнен успешно");
+});
+
+app.get("/v1/sessions", async (req, res) => {
+  const userId = req.header("X-User-Id");
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  try {
+    // Найдём все сессии текущего пользователя
+    const keys = await redis.keys(`refresh:${userId}:*`);
+    const sessions = await Promise.all(
+      keys.map(async (key) => {
+        const val = await redis.get(key);
+        if (!val) {
+          return null;
+        }
+        const valJSON = JSON.parse(val);
+        return {
+          createdAt: new Date(valJSON.createdAt),
+          userAgent: valJSON.userAgent,
+          ip: valJSON.ip,
+        };
+      })
+    ).then((res) => res.filter(Boolean));
+    return res.json(sessions);
+  } catch (error) {
+    console.error("Ошибка при получении сессий:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.post("/v1/logout-all", async (req, res) => {
+  const userId = req.header("X-User-Id");
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  try {
+    const keys = await redis.keys(`refresh:${userId}:*`);
+
+    if (!keys.length) {
+      return res.status(200).send("Активных сессий не найдено");
+    }
+
+    await redis.del(...keys); // удалить все ключи разом
+
+    return res.status(200).json({
+      message: `Удалено ${keys.length} активных сессий`,
+    });
+  } catch (error) {
+    console.error("Ошибка при удалении всех refresh-токенов:", error);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.put("/v1/password", async (req, res) => {
+  const userId = req.header("X-User-Id");
+  const { oldPassword, newPassword } = req.body;
+
+  if (!userId || isNaN(Number(userId))) {
+    return res.status(400).send("Неверный или отсутствующий X-User-Id");
+  }
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).send("Нужно указать oldPassword и newPassword");
+  }
+
+  try {
+    // Получаем текущий хеш из БД
+    const oldPasswordHash = await postgresql
+      .query(`SELECT password_hash FROM users WHERE id = $1`, [userId])
+      .then((res) => res.rows[0]?.password_hash);
+
+    if (!oldPasswordHash) {
+      return res
+        .status(404)
+        .send("Пользователь или хеш старого пароля не найден");
+    }
+
+    // Сравниваем старый пароль
+    const isMatch = await bcrypt.compare(oldPassword, oldPasswordHash);
+    if (!isMatch) {
+      return res.status(403).send("Старый пароль неверен");
+    }
+
+    // Хешируем и сохраняем новый пароль
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await postgresql.query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2`,
+      [newHash, userId]
+    );
+
+    return res.status(200).send("Пароль успешно изменён");
+  } catch (err) {
+    console.error("Ошибка при смене пароля:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
 });
 
 // SERVICE START
