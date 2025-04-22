@@ -25,6 +25,11 @@
   let [newName, newSurname, newBirthdate] = ["", "", null];
   let personalInfoEditErrorText = "";
 
+  let isChangePswdModalOpened = false;
+  let oldPassword = "";
+  let newPassword = "";
+  let changePswdErrorText = "";
+
   onMount(async () => {
     if (!$accessToken) {
       push("/login");
@@ -175,7 +180,70 @@
     accessToken.set(null);
     push("/login");
   }
+
+  function closeChangePswdModal() {
+    isChangePswdModalOpened = false;
+  }
+  function openChangePswdModal() {
+    changePswdErrorText = "";
+    newPassword = "";
+    oldPassword = "";
+    isChangePswdModalOpened = true;
+  }
+
+  async function changePassword() {
+    if (!oldPassword || !newPassword) {
+      changePswdErrorText = "Все поля обязательны для заполнения";
+      return;
+    }
+    const query = await apiFetch("api/users/v1/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    });
+    if (!query.ok) {
+      changePswdErrorText = await query.text();
+      return;
+    }
+    closeChangePswdModal();
+  }
 </script>
+
+{#if isChangePswdModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="deposit-overlay"
+    on:click|self={closeChangePswdModal}
+  >
+    <div class="modal">
+      <h2>Сменить пароль</h2>
+      <input
+        type="password"
+        bind:value={oldPassword}
+        maxlength="64"
+        placeholder="Текущий пароль"
+      />
+      <input
+        type="password"
+        bind:value={newPassword}
+        maxlength="64"
+        placeholder="Новый пароль"
+      />
+      {#if changePswdErrorText}
+        <span class="error">{changePswdErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button on:click={changePassword}>Сменить</button>
+        <button class="outline secondary" on:click={closeChangePswdModal}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if isDepositModalOpened}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -249,7 +317,10 @@
     <div in:fade class="block user-info-block">
       <div class="title-one-line">
         <span>Информация о <span>{currentUser.nickname}</span></span>
-        <button on:click={openPersonalInfoEditModal}>Изменить ПД</button>
+        <div>
+          <button on:click={openChangePswdModal}>Сменить пароль</button>
+          <button on:click={openPersonalInfoEditModal}>Изменить ПД</button>
+        </div>
       </div>
       <table>
         <tbody>
