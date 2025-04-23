@@ -455,6 +455,109 @@ app.put("/v1/password", async (req, res) => {
   }
 });
 
+app.get("/v1/admin/users", async (req, res) => {
+  const roleName = req.header("X-User-Role-Name");
+
+  if (roleName !== "admin") {
+    return res.status(403).send("Доступ разрешён только для администратора");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT 
+         users.id,
+         users.email,
+         users.nickname,
+         users.name,
+         users.surname,
+         users.birthdate,
+         roles.name AS role
+       FROM users
+       JOIN roles ON users.roleid = roles.id
+       ORDER BY users.id`
+    );
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error("Ошибка при получении пользователей:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
+app.post("/v1/admin/users", async (req, res) => {
+  const roleName = req.header("X-User-Role-Name");
+
+  if (roleName !== "admin") {
+    return res.status(403).send("Доступ разрешён только для администратора");
+  }
+
+  const { email, nickname, password, name, surname, birthdate, role } =
+    req.body;
+
+  if (
+    !email ||
+    !nickname ||
+    !password ||
+    !name ||
+    !surname ||
+    !birthdate ||
+    !role
+  ) {
+    return res
+      .status(400)
+      .send(
+        "Необходимо указать все поля: email, nickname, password, name, surname, birthdate, role"
+      );
+  }
+
+  // Разрешаем создавать только seller и admin
+  if (!["seller", "admin"].includes(role.toLowerCase())) {
+    return res
+      .status(400)
+      .send("Можно создать только пользователя с ролью 'seller' или 'admin'");
+  }
+
+  try {
+    // Проверка уникальности
+    const existing = await postgresql.query(
+      `SELECT 1 FROM users WHERE email = $1 OR nickname = $2`,
+      [email, nickname]
+    );
+    if (existing.rowCount > 0) {
+      return res
+        .status(409)
+        .send("Пользователь с таким email или nickname уже существует");
+    }
+
+    // Получение id роли
+    const roleResult = await postgresql.query(
+      `SELECT id FROM roles WHERE lower(name) = lower($1)`,
+      [role]
+    );
+
+    const roleId = roleResult.rows[0]?.id;
+    if (!roleId) {
+      return res.status(400).send("Указанная роль не найдена");
+    }
+
+    // Хэшируем пароль
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Создание пользователя
+    const insertResult = await postgresql.query(
+      `INSERT INTO users (email, nickname, password_hash, name, surname, birthdate, roleid)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, email, nickname, name, surname, birthdate`,
+      [email, nickname, passwordHash, name, surname, birthdate, roleId]
+    );
+
+    return res.status(201).json(insertResult.rows[0]);
+  } catch (err) {
+    console.error("Ошибка при создании пользователя:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Users service running on port ${APP_PORT}`)
