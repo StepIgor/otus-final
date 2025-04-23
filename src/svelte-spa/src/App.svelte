@@ -10,6 +10,7 @@
   import Product from "./routes/Product.svelte";
   import Library from "./routes/Library.svelte";
   import Seller from "./routes/Seller.svelte";
+  import Admin from "./routes/Admin.svelte";
   import Notifications from "./routes/Notifications.svelte";
 
   const routes = {
@@ -21,6 +22,7 @@
     "/store/product/:id": Product,
     "/library": Library,
     "/seller": Seller,
+    "/admin": Admin,
     "/notifications": Notifications,
     "*": NotFound,
   };

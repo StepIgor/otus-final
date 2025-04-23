@@ -45,6 +45,9 @@
   {#if $userRoleName === "seller"}
     <a href="#/seller" class:active={$currentHash === "#/seller"}>Издатель</a>
   {/if}
+  {#if $userRoleName === "admin"}
+    <a href="#/admin" class:active={$currentHash === "#/admin"}>Администратор</a>
+  {/if}
   <a href="#/store" class:active={$currentHash === "#/store"}>Магазин</a>
   <a href="#/library" class:active={$currentHash === "#/library"}>Библиотека</a>
   <a href="#/notifications" class:active={$currentHash === "#/notifications"}>
