@@ -8,6 +8,7 @@
 
   let productInfo;
   let sellerInfo;
+  let [reviews, reviewStats, myReview] = [[], null, {}];
   let userOwnedProducts;
   let newOrderUuid = uuidv4();
   let isPurchaseBtnLocked = false;
@@ -30,6 +31,34 @@
     await setUserOwnedProducts();
     productInfo = await query.json();
     setSellerInfo();
+    setReviews($params.id);
+    setReviewStats($params.id);
+    setMyReview($params.id);
+  }
+
+  async function setReviews(productId) {
+    reviews = await apiFetch(`api/social/v1/reviews/${productId}`)
+      .then((res) => res.json())
+      .then((res) =>
+        Promise.all(
+          res.map(async (review) => ({
+            ...review,
+            userInfo: await apiFetch(
+              `api/users/v1/users/${review.userid}`
+            ).then((res) => res.json()),
+          }))
+        )
+      );
+  }
+  async function setReviewStats(productId) {
+    reviewStats = await apiFetch(
+      `api/social/v1/reviews/${productId}/stats`
+    ).then((res) => res.json());
+  }
+  async function setMyReview(productId) {
+    myReview = await apiFetch(`api/social/v1/reviews/${productId}/my`).then(
+      (res) => res.json()
+    );
   }
 
   async function setSellerInfo() {
@@ -133,10 +162,66 @@
       <h4>Системные требования</h4>
       {productInfo.systemrequirements}
     </article>
+    <article in:fade>
+      <h4>Оценки ({reviews?.length || 0} всего)</h4>
+      📊
+      {reviewStats?.recommend || 0} положительных,
+      {reviewStats?.not_recommend || 0} отрицательных
+    </article>
+    {#if myReview?.review?.text}
+      <article in:fade>
+        <h4>
+          Мой отзыв от
+          {new Date(myReview?.review?.createdate).toLocaleDateString("ru-RU")}
+        </h4>
+        <div>
+          <i>
+            {myReview?.review?.recommends
+              ? "👍🏻 Рекомендую"
+              : "👎🏻 Не рекомендую"}
+          </i>
+        </div>
+        <div>
+          {myReview?.review?.text}
+        </div>
+      </article>
+    {:else}
+      <article in:fade>
+        <h4>Мой отзыв</h4>
+        <button>Опубликовать отзыв к продукту</button>
+      </article>
+    {/if}
+    <article in:fade>
+      <h4>Отзывы ({reviews?.length || 0} всего)</h4>
+      {#if reviews?.length}
+        {#each reviews as review}
+          <div class="review">
+            <div>
+              🙂 <a href={`#/user/${review.userInfo?.id}`}>
+                {review.userInfo?.nickname || "unknown"}
+              </a>
+              <span
+                class:recommends={review.recommends}
+                class:not_recommends={!review.recommends}
+              >
+                {review.recommends ? "рекомендует" : "не рекомендует"}
+              </span>
+              <span class="secondary-text">
+                ({new Date(review.createdate).toLocaleDateString("ru-RU")})
+              </span>
+            </div>
+            <div>
+              {review.text}
+            </div>
+          </div>
+        {/each}
+      {:else}
+        <span>Нет ни одного опубликованного отзыва к продукту</span>
+      {/if}
+    </article>
     <article in:fade class="details">
-      Дата публикации: {new Date(productInfo.createdate).toLocaleDateString(
-        "ru-RU"
-      )}
+      Дата публикации:
+      {new Date(productInfo.createdate).toLocaleDateString("ru-RU")}
     </article>
   {/if}
 </main>
@@ -159,7 +244,8 @@
   .blocks-container .highlight {
     color: var(--pico-primary);
   }
-  .blocks-container .details {
+  .blocks-container .details,
+  .secondary-text {
     color: var(--pico-secondary);
   }
   article > div {
@@ -168,5 +254,18 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: nowrap;
+  }
+  .recommends {
+    color: green;
+  }
+  .not_recommends {
+    color: orangered;
+  }
+  .review {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
   }
 </style>
