@@ -130,6 +130,31 @@ app.get("/v1/reviews/:productid/stats", async (req, res) => {
   }
 });
 
+app.get("/v1/reviews/:productid/my", async (req, res) => {
+  const userId = parseInt(req.header("X-User-Id"));
+  const productId = parseInt(req.params.productid);
+
+  if (!userId || isNaN(userId) || !productId || isNaN(productId)) {
+    return res.status(400).send("Некорректный userId или productid");
+  }
+
+  try {
+    const result = await postgresql
+      .query(
+        `SELECT createdate, recommends, text FROM reviews
+       WHERE userid = $1 AND productid = $2
+       LIMIT 1`,
+        [userId, productId]
+      )
+      .then((res) => res.rows[0]);
+
+    return res.json({ review: result });
+  } catch (err) {
+    console.error("Ошибка при проверке отзыва:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
 // отправить заявку в друзья
 app.post("/v1/friends/:friendId", async (req, res) => {
   const userId = parseInt(req.header("X-User-Id"));
