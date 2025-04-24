@@ -8,11 +8,17 @@
 
   let productInfo;
   let sellerInfo;
-  let [reviews, reviewStats, myReview] = [[], null, {}];
+  let [reviews, reviewStats, myReview] = [[], null, null];
   let userOwnedProducts;
   let newOrderUuid = uuidv4();
   let isPurchaseBtnLocked = false;
   let isPurchaseBtnLoading = false;
+
+  let isNewReviewModalOpened = false;
+  let [newReviewRecommends, newReviewText] = [true, ""];
+  let newReviewErrorText = "";
+
+  let hasUserPurchasedProduct = false;
 
   $: if ($params?.id) {
     setProductInfo();
@@ -34,6 +40,9 @@
     setReviews($params.id);
     setReviewStats($params.id);
     setMyReview($params.id);
+    hasUserPurchasedProduct = userOwnedProducts?.some(
+      (prod) => Number(prod.productid) === Number($params.id)
+    );
   }
 
   async function setReviews(productId) {
@@ -96,12 +105,10 @@
       : "primary";
   }
 
-  async function onPurchaseBtnClick() {
+  async function onPurchaseBtnClick(productId) {
     if (
       isPurchaseBtnLocked ||
-      userOwnedProducts?.some(
-        (prod) => Number(prod.productid) === productInfo?.id
-      )
+      userOwnedProducts?.some((prod) => Number(prod.productid) === productId)
     ) {
       return;
     }
@@ -110,7 +117,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        productid: productInfo?.id,
+        productid: productId,
         requestId: newOrderUuid,
       }),
     });
@@ -120,7 +127,75 @@
     }
     isPurchaseBtnLoading = false;
   }
+
+  function closeNewReviewModal() {
+    isNewReviewModalOpened = false;
+  }
+  function openNewReviewModal() {
+    newReviewRecommends = true;
+    newReviewText = "";
+    newReviewErrorText = "";
+    isNewReviewModalOpened = true;
+  }
+
+  async function submitNewReview() {
+    if (!newReviewText?.trim()) {
+      newReviewErrorText = "Проверьте заполнение всех полей";
+      return;
+    }
+    const query = await apiFetch("api/social/v1/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productid: $params.id,
+        recommends: newReviewRecommends,
+        text: newReviewText,
+      }),
+    });
+    if (!query.ok) {
+      newReviewErrorText = await query.text();
+      return;
+    }
+    setReviews($params.id);
+    setMyReview($params.id);
+    setReviewStats($params.id);
+    closeNewReviewModal();
+  }
 </script>
+
+{#if isNewReviewModalOpened}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    in:fade
+    out:fade
+    class="modal-overlay"
+    on:click|self={closeNewReviewModal}
+  >
+    <div class="modal">
+      <h2>Опубликовать отзыв к {productInfo?.title || "продукту"}</h2>
+      <label>
+        <input type="checkbox" bind:checked={newReviewRecommends} />
+        Рекомендую
+      </label>
+
+      <textarea
+        bind:value={newReviewText}
+        maxlength="4096"
+        placeholder="Текст отзыва"
+      ></textarea>
+      {#if newReviewErrorText}
+        <span class="error">{newReviewErrorText}</span>
+      {/if}
+      <div class="buttons">
+        <button on:click={submitNewReview}>Опубликовать</button>
+        <button class="outline secondary" on:click={closeNewReviewModal}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <main class="blocks-container">
   <NavMenu />
@@ -130,10 +205,10 @@
         <div>
           <h2>{productInfo.title}</h2>
           {#if sellerInfo}
-            <div class="highlight">
+            <a class="highlight" href={`#/user/${sellerInfo.id}`}>
               {sellerInfo.name}
               {sellerInfo.surname} ({sellerInfo.nickname})
-            </div>
+            </a>
           {/if}
           <div class="details">
             {productInfo.type === "digital"
@@ -147,7 +222,7 @@
             aria-busy={isPurchaseBtnLoading}
             aria-label="Заказ оформляется..."
             class={getPriceBtnClass(productInfo.id)}
-            on:click={onPurchaseBtnClick}
+            on:click={() => onPurchaseBtnClick(productInfo.id)}
           >
             {getPriceBtnText(productInfo.id, productInfo.price)}
           </button>
@@ -175,20 +250,18 @@
           {new Date(myReview?.review?.createdate).toLocaleDateString("ru-RU")}
         </h4>
         <div>
-          <i>
-            {myReview?.review?.recommends
-              ? "👍🏻 Рекомендую"
-              : "👎🏻 Не рекомендую"}
-          </i>
+          {myReview?.review?.recommends ? "👍🏻 Рекомендую" : "👎🏻 Не рекомендую"}
         </div>
         <div>
           {myReview?.review?.text}
         </div>
       </article>
-    {:else}
+    {:else if hasUserPurchasedProduct}
       <article in:fade>
         <h4>Мой отзыв</h4>
-        <button>Опубликовать отзыв к продукту</button>
+        <button on:click={openNewReviewModal}>
+          Опубликовать отзыв к продукту
+        </button>
       </article>
     {/if}
     <article in:fade>
@@ -267,5 +340,35 @@
     flex-direction: column;
     justify-content: start;
     align-items: start;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay .modal {
+    background: var(--pico-background-color);
+    padding: 24px;
+    border-radius: 12px;
+    width: 50vw;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .modal-overlay .buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+
+  label {
+    margin: 12px 0 24px 0;
+  }
+
+  .error {
+    color: var(--pico-del-color);
   }
 </style>
