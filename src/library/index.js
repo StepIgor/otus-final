@@ -215,6 +215,29 @@ app.get("/v1/products", async (req, res) => {
   }
 });
 
+app.get("/v1/library/:userId", async (req, res) => {
+  const userId = parseInt(req.params.userId);
+
+  if (!userId || isNaN(userId)) {
+    return res.status(400).send("Некорректный userId");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT productid, licenseid
+       FROM library
+       WHERE userid = $1
+       ORDER BY productid`,
+      [userId]
+    );
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error("Ошибка при получении библиотеки:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Library service running on port ${APP_PORT}`)

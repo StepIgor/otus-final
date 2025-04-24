@@ -557,6 +557,29 @@ app.get("/v1/seller/products/:id/licenses", async (req, res) => {
   }
 });
 
+app.get("/v1/products/seller/:sellerId", async (req, res) => {
+  const sellerId = parseInt(req.params.sellerId);
+
+  if (!sellerId || isNaN(sellerId)) {
+    return res.status(400).send("Некорректный sellerId");
+  }
+
+  try {
+    const result = await postgresql.query(
+      `SELECT id, title, description, type, price, systemrequirements, createdate
+       FROM products
+       WHERE sellerid = $1
+       ORDER BY createdate DESC`,
+      [sellerId]
+    );
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error("Ошибка при получении товаров продавца:", err);
+    return res.status(500).send("Ошибка сервера");
+  }
+});
+
 // SERVICE START
 app.listen(APP_PORT, () =>
   console.log(`Store service running on port ${APP_PORT}`)
