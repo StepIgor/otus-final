@@ -26,7 +26,7 @@ const postgresql = new Pool({
 app.use(express.json());
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -88,14 +88,14 @@ async function subscribeToOrderUpdated() {
         await client.query("COMMIT");
         channel.ack(msg);
         if (userId) {
-          sendToRabbitEchange("notifications_events", "notifications.created", {
+          sendToRabbitExchange("notifications_events", "notifications.created", {
             userId,
             uuid: uuidv4(),
             text: `По заказу #${orderId} есть обновления. Обновлённый статус: "${status}", комментарий: "${comment}"`,
           });
         }
         if (sellerId && status === "pending") {
-          sendToRabbitEchange("notifications_events", "notifications.created", {
+          sendToRabbitExchange("notifications_events", "notifications.created", {
             userId: sellerId,
             uuid: uuidv4(),
             text: `Заказ #${orderId} ожидает ваших действий. Актуализируйте его статус в разделе "Издатель"`,
@@ -187,7 +187,7 @@ app.post("/v1/orders", async (req, res) => {
     // Сохраняем UUID → orderId в Redis (на 24 часа)
     await redis.set(redisKey, order.id, "EX", 60 * 60 * 24);
 
-    sendToRabbitEchange("store_events", "order.created", {
+    sendToRabbitExchange("store_events", "order.created", {
       orderId: order.id,
       userId: order.userid,
       productId: order.productid,
@@ -278,13 +278,13 @@ app.put("/v1/seller/orders/:id/complete", async (req, res) => {
 
     await client.query("COMMIT");
     // фиксируем физическую лицензию за покупателем
-    sendToRabbitEchange("library_events", "orders.completed", {
+    sendToRabbitExchange("library_events", "orders.completed", {
       userId: result.userid,
       productId: result.productid,
       licenseId: result.licenseid,
     });
     // уведомляем пользователя
-    sendToRabbitEchange("notifications_events", "notifications.created", {
+    sendToRabbitExchange("notifications_events", "notifications.created", {
       userId: result.userid,
       uuid: uuidv4(),
       text: `По заказу #${orderId} есть обновления. Обновлённый статус: "done", комментарий: "Копия доставлена покупателю"`,
@@ -345,7 +345,7 @@ app.put("/v1/seller/orders/:id/decline", async (req, res) => {
     }
 
     // Откатываем списание денег, снимаем бронь с лицензии. Запись в таблице будет обновлять orders.updated
-    sendToRabbitEchange("billing_events", "orders.updated", {
+    sendToRabbitExchange("billing_events", "orders.updated", {
       orderId,
       userId: order.userid,
       productId: order.productid,

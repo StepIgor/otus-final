@@ -25,7 +25,7 @@ const postgresql = new Pool({
 app.use(express.json());
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -78,7 +78,7 @@ async function subscribeToOrderCreated() {
           )
           .then((res) => res.rows[0]);
         if (alreadyTakenLicense) {
-          sendToRabbitEchange("orders_events", "orders.updated", {
+          sendToRabbitExchange("orders_events", "orders.updated", {
             orderId,
             productId,
             userId,
@@ -98,7 +98,7 @@ async function subscribeToOrderCreated() {
           .then((res) => res.rows[0]);
 
         if (!freeLicense) {
-          sendToRabbitEchange("orders_events", "orders.updated", {
+          sendToRabbitExchange("orders_events", "orders.updated", {
             orderId,
             productId,
             userId,
@@ -124,7 +124,7 @@ async function subscribeToOrderCreated() {
 
         await client.query("COMMIT");
 
-        sendToRabbitEchange("billing_events", "orders.created", {
+        sendToRabbitExchange("billing_events", "orders.created", {
           uuid: uuidv4(),
           orderId,
           userId,
@@ -193,7 +193,7 @@ async function subscribeToOrderUpdated() {
         );
 
         await client.query("COMMIT");
-        sendToRabbitEchange("orders_events", "orders.updated", {
+        sendToRabbitExchange("orders_events", "orders.updated", {
           orderId,
           productId,
           sellerId,

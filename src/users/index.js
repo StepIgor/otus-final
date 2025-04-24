@@ -62,7 +62,7 @@ const generateTokens = (
 };
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -140,7 +140,7 @@ app.post("/v1/register", async (req, res) => {
     await client.query("COMMIT");
 
     // Публикуем событие только после успешного коммита
-    sendToRabbitEchange("billing_events", "user.created", {
+    sendToRabbitExchange("billing_events", "user.created", {
       userId: newUser.id,
     });
 
@@ -177,7 +177,7 @@ app.post("/v1/login", async (req, res) => {
     req.headers["user-agent"],
     req.ip
   );
-  sendToRabbitEchange("notifications_events", "notifications.created", {
+  sendToRabbitExchange("notifications_events", "notifications.created", {
     userId: user.id,
     uuid: uuidv4(),
     text: `В аккаунт выполнен вход с IP ${req.ip} и устройства "${req.headers["user-agent"]}". Если это были не вы, закройте все сессии на странице аккаунта и смените пароль`,
@@ -442,7 +442,7 @@ app.put("/v1/password", async (req, res) => {
       [newHash, userId]
     );
 
-    sendToRabbitEchange("notifications_events", "notifications.created", {
+    sendToRabbitExchange("notifications_events", "notifications.created", {
       userId,
       uuid: uuidv4(),
       text: `На аккаунте успешно обновлён пароль`,

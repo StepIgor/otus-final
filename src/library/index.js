@@ -25,7 +25,7 @@ const postgresql = new Pool({
 app.use(express.json());
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -89,7 +89,7 @@ async function subscribeToOrderCreated() {
           .then((res) => res.rows[0]);
 
         if (sameLicenseAdded) {
-          sendToRabbitEchange("orders_events", "orders.updated", {
+          sendToRabbitExchange("orders_events", "orders.updated", {
             orderId,
             userId,
             productId,
@@ -109,7 +109,7 @@ async function subscribeToOrderCreated() {
           [userId, productId, licenseId]
         );
 
-        sendToRabbitEchange("orders_events", "orders.updated", {
+        sendToRabbitExchange("orders_events", "orders.updated", {
           orderId,
           userId,
           productId,

@@ -25,7 +25,7 @@ const postgresql = new Pool({
 app.use(express.json());
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -171,12 +171,12 @@ app.post("/v1/friends/:friendId", async (req, res) => {
         [userId, friendId]
       );
       await postgresql.query("COMMIT");
-      sendToRabbitEchange("notifications_events", "notifications.created", {
+      sendToRabbitExchange("notifications_events", "notifications.created", {
         friendId,
         uuid: uuidv4(),
         text: `Ваш список друзей пополнился!`,
       });
-      sendToRabbitEchange("notifications_events", "notifications.created", {
+      sendToRabbitExchange("notifications_events", "notifications.created", {
         userId,
         uuid: uuidv4(),
         text: `Ваш список друзей пополнился!`,
@@ -190,7 +190,7 @@ app.post("/v1/friends/:friendId", async (req, res) => {
       [userId, friendId]
     );
 
-    sendToRabbitEchange("notifications_events", "notifications.created", {
+    sendToRabbitExchange("notifications_events", "notifications.created", {
       friendId,
       uuid: uuidv4(),
       text: `Вы получили заявку на добавление в друзья`,
@@ -258,12 +258,12 @@ app.post("/v1/friends/approve/:friendId", async (req, res) => {
     );
     await postgresql.query("COMMIT");
 
-    sendToRabbitEchange("notifications_events", "notifications.created", {
+    sendToRabbitExchange("notifications_events", "notifications.created", {
       userId,
       uuid: uuidv4(),
       text: `Ваш список друзей пополнился!`,
     });
-    sendToRabbitEchange("notifications_events", "notifications.created", {
+    sendToRabbitExchange("notifications_events", "notifications.created", {
       friendId,
       uuid: uuidv4(),
       text: `Ваш список друзей пополнился!`,

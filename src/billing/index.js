@@ -63,7 +63,7 @@ async function updateUserRedisBalance(userId, newBalance) {
 }
 
 // Отправка сообщений в RabbitMQ
-async function sendToRabbitEchange(exchange, routingKey, message) {
+async function sendToRabbitExchange(exchange, routingKey, message) {
   try {
     const connection = await amqplib.connect(RABBIT_URL);
     const channel = await connection.createChannel();
@@ -124,7 +124,7 @@ async function subscribeToUserCreated() {
 
         await client.query("COMMIT");
         channel.ack(msg);
-        sendToRabbitEchange("notifications_events", "notifications.created", {
+        sendToRabbitExchange("notifications_events", "notifications.created", {
           userId,
           uuid: uuidv4(),
           text: "Добро пожаловать! В качестве приветственного бонуса на баланс зачислено 500! Приятных покупок!",
@@ -191,7 +191,7 @@ async function subscribeToOrderCreated() {
           .then((res) => res.rows[0].balance);
 
         if (Number(userBalance) < Number(productPrice)) {
-          sendToRabbitEchange("store_events", "orders.updated", {
+          sendToRabbitExchange("store_events", "orders.updated", {
             uuid,
             orderId,
             userId,
@@ -223,7 +223,7 @@ async function subscribeToOrderCreated() {
 
         if (productType === "physical") {
           // заказ должен перевести в готовность Издатель
-          sendToRabbitEchange("orders_events", "orders.updated", {
+          sendToRabbitExchange("orders_events", "orders.updated", {
             orderId,
             userId,
             productId,
@@ -235,7 +235,7 @@ async function subscribeToOrderCreated() {
           });
         } else {
           // осталось добавить товар в библиотеку пользователя
-          sendToRabbitEchange("library_events", "orders.created", {
+          sendToRabbitExchange("library_events", "orders.created", {
             uuid,
             orderId,
             userId,
@@ -320,7 +320,7 @@ async function subscribeToOrderUpdated() {
         await client.query("COMMIT");
         updateUserRedisBalance(userId);
 
-        sendToRabbitEchange("store_events", "orders.updated", {
+        sendToRabbitExchange("store_events", "orders.updated", {
           orderId,
           userId,
           productId,
