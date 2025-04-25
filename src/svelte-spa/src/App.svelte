@@ -21,13 +21,13 @@
     "/register": Register,
     "/account": Account,
     "/store": Store,
-    "/store/product/:id": Product,
+    "/store/product/:productid": Product,
     "/library": Library,
     "/seller": Seller,
     "/admin": Admin,
     "/notifications": Notifications,
     "/community": Community,
-    "/community/user/:id": UserPage,
+    "/community/user/:userid": UserPage,
     "*": NotFound,
   };
 </script>

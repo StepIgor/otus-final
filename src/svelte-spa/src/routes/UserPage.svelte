@@ -18,12 +18,12 @@
   let isFriendBtnDisabled = false;
   let friendBtnCustomText = "";
 
-  $: if ($params?.id) {
+  $: if ($params?.userid) {
     setAllInfo();
   }
 
   async function setAllInfo() {
-    userId = $params.id;
+    userId = $params.userid;
     await Promise.all([setUserInfo(userId), setMyFriends()]);
     isItMe = userInfo?.nickname === $userLogin;
     isUserMyFriend = myFriends?.some(

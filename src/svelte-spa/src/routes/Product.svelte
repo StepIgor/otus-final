@@ -20,12 +20,12 @@
 
   let hasUserPurchasedProduct = false;
 
-  $: if ($params?.id) {
+  $: if ($params?.productid) {
     setProductInfo();
   }
 
   async function setProductInfo() {
-    const query = await apiFetch(`api/store/v1/products/${$params.id}`);
+    const query = await apiFetch(`api/store/v1/products/${$params.productid}`);
     if (query.status === 401) {
       push("/login");
       return;
@@ -37,11 +37,11 @@
     await setUserOwnedProducts();
     productInfo = await query.json();
     setSellerInfo();
-    setReviews($params.id);
-    setReviewStats($params.id);
-    setMyReview($params.id);
+    setReviews($params.productid);
+    setReviewStats($params.productid);
+    setMyReview($params.productid);
     hasUserPurchasedProduct = userOwnedProducts?.some(
-      (prod) => Number(prod.productid) === Number($params.id)
+      (prod) => Number(prod.productid) === Number($params.productid)
     );
   }
 
@@ -147,7 +147,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        productid: $params.id,
+        productid: $params.productid,
         recommends: newReviewRecommends,
         text: newReviewText,
       }),
@@ -156,9 +156,9 @@
       newReviewErrorText = await query.text();
       return;
     }
-    setReviews($params.id);
-    setMyReview($params.id);
-    setReviewStats($params.id);
+    setReviews($params.productid);
+    setMyReview($params.productid);
+    setReviewStats($params.productid);
     closeNewReviewModal();
   }
 </script>
