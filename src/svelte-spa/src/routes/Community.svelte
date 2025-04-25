@@ -1,6 +1,6 @@
 <script>
   import { onMount } from "svelte";
-  import { userLogin, userRoleName } from "../stores/auth";
+  import { userLogin } from "../stores/auth";
   import { apiFetch } from "../lib/apiFetch";
   import { push } from "svelte-spa-router";
   import { fade } from "svelte/transition";
@@ -46,7 +46,7 @@
         <div class="friend-blocks">
           {#each friends as friend}
             <div class="friend-block">
-              <a href={`#/user/${friend.id}`} class="friend-nickname">
+              <a href={`#/community/user/${friend.id}`} class="friend-nickname">
                 {friend.nickname}
               </a>
               <span class="friend-fullname">

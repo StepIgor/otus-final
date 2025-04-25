@@ -13,6 +13,7 @@
   import Admin from "./routes/Admin.svelte";
   import Notifications from "./routes/Notifications.svelte";
   import Community from "./routes/Community.svelte";
+  import UserPage from "./routes/UserPage.svelte";
 
   const routes = {
     "/": Index,
@@ -26,6 +27,7 @@
     "/admin": Admin,
     "/notifications": Notifications,
     "/community": Community,
+    "/community/user/:id": UserPage,
     "*": NotFound,
   };
 </script>

@@ -205,7 +205,7 @@
         <div>
           <h2>{productInfo.title}</h2>
           {#if sellerInfo}
-            <a class="highlight" href={`#/user/${sellerInfo.id}`}>
+            <a class="highlight" href={`#/community/user/${sellerInfo.id}`}>
               {sellerInfo.name}
               {sellerInfo.surname} ({sellerInfo.nickname})
             </a>
@@ -270,7 +270,7 @@
         {#each reviews as review}
           <div class="review">
             <div>
-              🙂 <a href={`#/user/${review.userInfo?.id}`}>
+              🙂 <a href={`#/community/user/${review.userInfo?.id}`}>
                 {review.userInfo?.nickname || "unknown"}
               </a>
               <span

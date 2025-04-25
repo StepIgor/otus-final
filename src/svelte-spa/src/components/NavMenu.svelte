@@ -46,17 +46,22 @@
     <a href="#/seller" class:active={$currentHash === "#/seller"}>Издатель</a>
   {/if}
   {#if $userRoleName === "admin"}
-    <a href="#/admin" class:active={$currentHash === "#/admin"}>Администратор</a>
+    <a href="#/admin" class:active={$currentHash === "#/admin"}>Администратор</a
+    >
   {/if}
   <a href="#/store" class:active={$currentHash === "#/store"}>Магазин</a>
   <a href="#/library" class:active={$currentHash === "#/library"}>Библиотека</a>
   <a href="#/notifications" class:active={$currentHash === "#/notifications"}>
     Уведомления
     {#if unreadNotificationsCount && $currentHash !== "#/notifications"}
-      <span in:fade class="notification-counter">{unreadNotificationsCount}</span>
+      <span in:fade class="notification-counter">
+        {unreadNotificationsCount}
+      </span>
     {/if}
   </a>
-  <a href="#/community" class:active={$currentHash === "#/community"}>Сообщество</a>
+  <a href="#/community" class:active={$currentHash.startsWith("#/community")}>
+    Сообщество
+  </a>
 </div>
 
 <style>

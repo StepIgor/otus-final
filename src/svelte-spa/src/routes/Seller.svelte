@@ -390,7 +390,7 @@
               <td>{order.licenseid}</td>
               <td>{order.price}</td>
               <td>
-                <a href={`#/user/${order.userid}`}>
+                <a href={`#/community/user/${order.userid}`}>
                   {order.userInfo?.nickname}
                 </a>
               </td>
