@@ -7,9 +7,11 @@
   import NavMenu from "../components/NavMenu.svelte";
 
   let friends = [];
+  let requests = [];
 
   onMount(() => {
     setFriends();
+    setRequests();
   });
 
   async function setFriends() {
@@ -28,6 +30,35 @@
         })
       )
     );
+  }
+
+  async function setRequests() {
+    const query = await apiFetch("api/social/v1/friends/requests");
+    requests = await query.json().then((res) =>
+      Promise.all(
+        res.map(async (request) => {
+          const userInfo = await apiFetch(
+            `api/users/v1/users/${request.from_user}`
+          ).then((res) => res.json());
+          return { ...request, ...userInfo };
+        })
+      )
+    );
+  }
+
+  async function acceptRequest(userId) {
+    await apiFetch(`api/social/v1/friends/approve/${userId}`, {
+      method: "POST",
+    });
+    setRequests();
+    setFriends();
+  }
+
+  async function denyRequest(userId) {
+    await apiFetch(`api/social/v1/friends/${userId}`, {
+      method: "DELETE",
+    });
+    setRequests();
   }
 </script>
 
@@ -59,6 +90,39 @@
         </div>
       {:else}
         Ваш список пока что пуст
+      {/if}
+    </article>
+    <article>
+      <h6>Заявки на добавление в друзья ({requests.length || 0})</h6>
+      {#if requests?.length}
+        <div class="friend-blocks">
+          {#each requests as request}
+            <div class="friend-block">
+              <a
+                href={`#/community/user/${request.id}`}
+                class="friend-nickname"
+              >
+                {request.nickname}
+              </a>
+              <span class="friend-fullname">
+                {request.name}
+                {request.surname}
+              </span>
+              <div>
+                <button
+                  class="outline primary"
+                  on:click={() => acceptRequest(request.id)}>✅</button
+                >
+                <button
+                  class="outline secondary"
+                  on:click={() => denyRequest(request.id)}>🚫</button
+                >
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        Заявок нет
       {/if}
     </article>
   </div>
