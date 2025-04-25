@@ -12,6 +12,7 @@
   import Seller from "./routes/Seller.svelte";
   import Admin from "./routes/Admin.svelte";
   import Notifications from "./routes/Notifications.svelte";
+  import Community from "./routes/Community.svelte";
 
   const routes = {
     "/": Index,
@@ -24,6 +25,7 @@
     "/seller": Seller,
     "/admin": Admin,
     "/notifications": Notifications,
+    "/community": Community,
     "*": NotFound,
   };
 </script>

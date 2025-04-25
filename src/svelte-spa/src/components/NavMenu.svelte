@@ -56,6 +56,7 @@
       <span in:fade class="notification-counter">{unreadNotificationsCount}</span>
     {/if}
   </a>
+  <a href="#/community" class:active={$currentHash === "#/community"}>Сообщество</a>
 </div>
 
 <style>
