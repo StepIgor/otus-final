@@ -197,7 +197,7 @@ app.post("/v1/friends/:friendId", async (req, res) => {
       );
       await postgresql.query("COMMIT");
       sendToRabbitExchange("notifications_events", "notifications.created", {
-        friendId,
+        userId: friendId,
         uuid: uuidv4(),
         text: `Ваш список друзей пополнился!`,
       });
@@ -216,7 +216,7 @@ app.post("/v1/friends/:friendId", async (req, res) => {
     );
 
     sendToRabbitExchange("notifications_events", "notifications.created", {
-      friendId,
+      userId: friendId,
       uuid: uuidv4(),
       text: `Вы получили заявку на добавление в друзья`,
     });
@@ -289,7 +289,7 @@ app.post("/v1/friends/approve/:friendId", async (req, res) => {
       text: `Ваш список друзей пополнился!`,
     });
     sendToRabbitExchange("notifications_events", "notifications.created", {
-      friendId,
+      userId: friendId,
       uuid: uuidv4(),
       text: `Ваш список друзей пополнился!`,
     });
