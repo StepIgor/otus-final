@@ -15,6 +15,9 @@
   let isUserMyFriend = false;
   let isItMe = false;
 
+  let isFriendBtnDisabled = false;
+  let friendBtnCustomText = "";
+
   $: if ($params?.id) {
     setAllInfo();
   }
@@ -73,6 +76,22 @@
       `api/store/v1/products/seller/${userInfo?.id}`
     ).then((res) => res.json());
   }
+
+  async function onFriendBtnClick(friendId) {
+    if (isItMe || isFriendBtnDisabled) {
+      return;
+    }
+    if (isUserMyFriend) {
+      await apiFetch(`api/social/v1/friends/${friendId}`, { method: "DELETE" });
+      setMyFriends();
+      setUserFriends();
+      isUserMyFriend = false;
+      return;
+    }
+    await apiFetch(`api/social/v1/friends/${friendId}`, { method: "POST" });
+    isFriendBtnDisabled = true;
+    friendBtnCustomText = "Заявка отправлена";
+  }
 </script>
 
 <main class="blocks-container">
@@ -90,10 +109,13 @@
       <div>
         <button
           class:outline={isItMe || isUserMyFriend}
-          disabled={isItMe}
+          disabled={isFriendBtnDisabled || isItMe}
           class:delete={isUserMyFriend}
+          on:click={() => onFriendBtnClick(userInfo?.id)}
         >
-          {#if isItMe}
+          {#if friendBtnCustomText}
+            <span>{friendBtnCustomText}</span>
+          {:else if isItMe}
             <span>Ваша страница</span>
           {:else if isUserMyFriend}
             <span>Удалить из друзей</span>
