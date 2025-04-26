@@ -1,0 +1,1725 @@
+{
+	"info": {
+		"_postman_id": "a5cbd70d-8c56-43fc-af2b-f24c2408422e",
+		"name": "Otus Final",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25405563"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "validate",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/validate",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"validate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"accessToken\", pm.response.json().accessToken);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"login\": \"user\",\n    \"password\": \"pswd\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/auth/login",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "register",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@difres.ru\",\n    \"nickname\": \"user\",\n    \"password\": \"pswd\",\n    \"name\": \"Ivan\",\n    \"surname\": \"Ivanov\",\n    \"birthdate\": \"2000-04-08\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/auth/register",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/logout",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout all",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/logout-all",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"logout-all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh-token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"accessToken\", pm.response.json().accessToken);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/auth/refresh-token",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "sessions",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/sessions",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"sessions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "balance",
+			"item": [
+				{
+					"name": "balance",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/billing/v1/balance",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"billing",
+								"v1",
+								"balance"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "balance transactions",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/billing/v1/transactions",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"billing",
+								"v1",
+								"transactions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "balance topup",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 9500,\n    \"uuid\": \"{{$guid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/billing/v1/deposit",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"billing",
+								"v1",
+								"deposit"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "seller",
+			"item": [
+				{
+					"name": "products",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/seller/products",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"seller",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "pending orders",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/orders/v1/seller/orders/pending",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"orders",
+								"v1",
+								"seller",
+								"orders",
+								"pending"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "product licenses",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/seller/products/68/licenses",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"seller",
+								"products",
+								"68",
+								"licenses"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "publish product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Cyberpunk 2077 Box Edition\",\n    \"description\": \"Большой неоновый город в новом хите от CD Project RED\",\n    \"type\": \"physical\",\n    \"price\": 3999,\n    \"systemrequirements\": \"Windows 10/11, GTX 3060, 16GB RAM, 128GB SSD\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/seller/products",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"seller",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"CyberHacker 2077 Updated Edition\",\n    \"description\": \"Футуристический взлом мира с новым DLC\",\n    \"price\": 4000,\n    \"systemrequirements\": \"Windows 10/11, GTX 1060, 8GB RAM, 96GB SSD\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/seller/products/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"seller",
+								"products",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add product licenses",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 20\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/seller/products/1/licenses",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"seller",
+								"products",
+								"1",
+								"licenses"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "complete physical order",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/orders/v1/seller/orders/1/complete",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"orders",
+								"v1",
+								"seller",
+								"orders",
+								"1",
+								"complete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "decline physical order",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/orders/v1/seller/orders/2/decline",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"orders",
+								"v1",
+								"seller",
+								"orders",
+								"2",
+								"decline"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "notifications",
+			"item": [
+				{
+					"name": "notifications",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/notifications/v1/all",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"notifications",
+								"v1",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "mark all read",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/notifications/v1/mark-read",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"notifications",
+								"v1",
+								"mark-read"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unread-count",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/notifications/v1/unread-count",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"notifications",
+								"v1",
+								"unread-count"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "admin",
+			"item": [
+				{
+					"name": "users",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/admin/users",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create user",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"seller@difres.ru\",\n    \"nickname\": \"seller\",\n    \"password\": \"pswd\",\n    \"name\": \"Registered\",\n    \"surname\": \"Seller\",\n    \"birthdate\": \"1986-09-03\",\n    \"role\": \"seller\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/users/v1/admin/users",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"users",
+								"v1",
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "store",
+			"item": [
+				{
+					"name": "products",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/products",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "seller products",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/products/seller/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"products",
+								"seller",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "product",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/store/v1/products/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"store",
+								"v1",
+								"products",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create order",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productid\": 1,\n    \"requestId\": \"{{$guid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/orders/v1/orders",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"orders",
+								"v1",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "publish review",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productid\": 1,\n    \"recommends\": true,\n    \"text\": \"Первый положительный отзыв к продукту на платформе\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/reviews",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"reviews"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "reviews",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/reviews/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"reviews",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "my review",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/reviews/1/my",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"reviews",
+								"1",
+								"my"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "product review stats",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/reviews/1/stats",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"reviews",
+								"1",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "my orders",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://arch.homework:8443/api/orders/v1/orders",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"orders",
+								"v1",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "friends",
+			"item": [
+				{
+					"name": "send request",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends/2",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "accept request",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends/approve/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends",
+								"approve",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "friend or request",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "requests",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productid\": 1,\n    \"requestId\": \"{{$guid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends/requests",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends",
+								"requests"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "my friends",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productid\": 1,\n    \"requestId\": \"{{$guid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "user friends",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productid\": 1,\n    \"requestId\": \"{{$guid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://arch.homework:8443/api/social/v1/friends/1",
+							"protocol": "https",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"port": "8443",
+							"path": [
+								"api",
+								"social",
+								"v1",
+								"friends",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "user",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://arch.homework:8443/api/users/v1/users/1",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"users",
+						"v1",
+						"users",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "me",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://arch.homework:8443/api/users/v1/me",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"users",
+						"v1",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "me",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Egor\",\n    \"surname\": \"Petrov\",\n    \"birthdate\": \"1997-08-28\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://arch.homework:8443/api/users/v1/me",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"users",
+						"v1",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "my library",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://arch.homework:8443/api/library/v1/products",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"library",
+						"v1",
+						"products"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user library",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://arch.homework:8443/api/library/v1/library/3",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"library",
+						"v1",
+						"library",
+						"3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "password",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"oldPassword\": \"pswd\",\n    \"newPassword\": \"pswd2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://arch.homework:8443/api/users/v1/password",
+					"protocol": "https",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"port": "8443",
+					"path": [
+						"api",
+						"users",
+						"v1",
+						"password"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
