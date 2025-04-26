@@ -1,0 +1,1188 @@
+openapi: 3.0.0
+info:
+  title: Online Store API
+  version: "1.0"
+paths:
+  /api/billing/v1/balance:
+    get:
+      summary: Получить текущий баланс пользователя
+      tags:
+        - Billing Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Баланс пользователя успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: integer
+                  balance:
+                    type: number
+        "400":
+          description: Ошибка запроса (отсутствует X-User-Id)
+        "500":
+          description: Ошибка сервера при получении баланса
+  /api/billing/v1/transactions:
+    get:
+      summary: Получить список транзакций пользователя
+      tags:
+        - Billing Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список транзакций пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: integer
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        amount:
+                          type: number
+                        description:
+                          type: string
+                        createdate:
+                          type: string
+                          format: date-time
+        "400":
+          description: Ошибка запроса (отсутствует X-User-Id)
+        "500":
+          description: Ошибка сервера при получении транзакций
+  /api/billing/v1/deposit:
+    post:
+      summary: Пополнить баланс пользователя
+      tags:
+        - Billing Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - uuid
+              properties:
+                amount:
+                  type: number
+                  description: Сумма пополнения
+                uuid:
+                  type: string
+                  description: Идентификатор запроса для идемпотентности
+      responses:
+        "201":
+          description: Баланс успешно пополнен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  transaction:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      amount:
+                        type: number
+                      createdate:
+                        type: string
+                        format: date-time
+        "400":
+          description: Ошибка запроса (отсутствует X-User-Id или некорректные данные)
+        "500":
+          description: Ошибка сервера при пополнении баланса
+
+  /api/library/v1/products:
+    get:
+      summary: Получить список приобретённых продуктов текущего пользователя
+      tags:
+        - Library Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список продуктов пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    productid:
+                      type: integer
+                    licenseid:
+                      type: integer
+        "400":
+          description: Ошибка запроса (некорректный или отсутствующий X-User-Id)
+        "500":
+          description: Ошибка сервера при получении библиотеки
+  /api/library/v1/library/{userId}:
+    get:
+      summary: Получить список приобретённых продуктов другого пользователя
+      tags:
+        - Library Service
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список продуктов пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    productid:
+                      type: integer
+                    licenseid:
+                      type: integer
+        "400":
+          description: Ошибка запроса (некорректный userId)
+        "500":
+          description: Ошибка сервера при получении библиотеки
+
+  /api/notifications/v1/all:
+    get:
+      summary: Получить все уведомления пользователя
+      tags:
+        - Notifications Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список уведомлений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    text:
+                      type: string
+                    createdate:
+                      type: string
+                      format: date-time
+        "400":
+          description: Ошибка запроса (неверный или отсутствующий X-User-Id)
+        "500":
+          description: Ошибка сервера при получении уведомлений
+  /api/notifications/v1/unread-count:
+    get:
+      summary: Получить количество непрочитанных уведомлений
+      tags:
+        - Notifications Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Количество непрочитанных уведомлений
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unread:
+                    type: integer
+        "400":
+          description: Ошибка запроса (неверный или отсутствующий X-User-Id)
+        "500":
+          description: Ошибка сервера при получении счётчика уведомлений
+  /api/notifications/v1/mark-read:
+    post:
+      summary: Сбросить счётчик непрочитанных уведомлений
+      tags:
+        - Notifications Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Счётчик уведомлений сброшен
+        "400":
+          description: Ошибка запроса (неверный или отсутствующий X-User-Id)
+        "500":
+          description: Ошибка сервера при сбросе счётчика уведомлений
+
+  /api/orders/v1/orders:
+    get:
+      summary: Получить список заказов пользователя
+      tags:
+        - Orders Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список заказов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    productid:
+                      type: integer
+                    price:
+                      type: number
+                    status:
+                      type: string
+                    comment:
+                      type: string
+                    createdate:
+                      type: string
+                      format: date-time
+        "401":
+          description: Неверный или отсутствующий X-User-Id
+        "500":
+          description: Ошибка сервера
+    post:
+      summary: Создать новый заказ
+      tags:
+        - Orders Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productid
+                - requestId
+              properties:
+                productid:
+                  type: integer
+                requestId:
+                  type: string
+      responses:
+        "201":
+          description: Заказ успешно создан
+        "400":
+          description: Неверные входные данные
+        "401":
+          description: Неверный или отсутствующий X-User-Id
+        "500":
+          description: Ошибка сервера
+  /api/orders/v1/seller/orders/pending:
+    get:
+      summary: Получить заказы в ожидании подтверждения продавцом
+      tags:
+        - Orders Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Role-Name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Список заказов в ожидании
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    userid:
+                      type: integer
+                    productid:
+                      type: integer
+                    licenseid:
+                      type: integer
+                    price:
+                      type: number
+                    comment:
+                      type: string
+                    createdate:
+                      type: string
+                      format: date-time
+        "400":
+          description: Неверный или отсутствующий X-User-Id
+        "403":
+          description: Доступ разрешён только продавцам
+        "500":
+          description: Ошибка сервера
+  /api/orders/v1/seller/orders/{id}/complete:
+    put:
+      summary: Завершить заказ продавцом
+      tags:
+        - Orders Service
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Role-Name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Заказ успешно завершён
+        "400":
+          description: Неверный X-User-Id или id заказа
+        "403":
+          description: Доступ разрешён только продавцам
+        "404":
+          description: Заказ не найден или недоступен
+        "500":
+          description: Ошибка сервера
+  /api/orders/v1/seller/orders/{id}/decline:
+    put:
+      summary: Отклонить заказ продавцом
+      tags:
+        - Orders Service
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Role-Name
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Заказ успешно отклонён
+        "400":
+          description: Неверный X-User-Id или id заказа
+        "403":
+          description: Доступ разрешён только продавцам
+        "404":
+          description: Заказ не найден или недоступен
+        "500":
+          description: Ошибка сервера
+
+  /api/social/v1/reviews:
+    post:
+      summary: Оставить отзыв на продукт
+      tags:
+        - Social Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productid
+                - recommends
+                - text
+              properties:
+                productid:
+                  type: integer
+                recommends:
+                  type: boolean
+                text:
+                  type: string
+      responses:
+        "201":
+          description: Отзыв создан
+        "400":
+          description: Неверные или неполные данные
+        "409":
+          description: Отзыв уже существует
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/reviews/{productid}:
+    get:
+      summary: Получить отзывы о продукте
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: productid
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список отзывов
+        "400":
+          description: Неверный productid
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/reviews/{productid}/stats:
+    get:
+      summary: Получить статистику отзывов о продукте
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: productid
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Статистика по рекомендациям
+        "400":
+          description: Неверный productid
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/reviews/{productid}/my:
+    get:
+      summary: Проверить наличие отзыва пользователя
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: productid
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Информация об отзыве
+        "400":
+          description: Некорректный userId или productid
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/friends/{friendId}:
+    post:
+      summary: Отправить заявку в друзья
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: friendId
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Заявка отправлена или подтверждена
+        "400":
+          description: Некорректный userId или friendId
+        "409":
+          description: Заявка уже существует
+        "500":
+          description: Ошибка сервера
+    delete:
+      summary: Удалить друга или отклонить заявку
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: friendId
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Связь удалена
+        "400":
+          description: Некорректный userId или friendId
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/friends/requests:
+    get:
+      summary: Получить входящие заявки в друзья
+      tags:
+        - Social Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список входящих заявок
+        "400":
+          description: Некорректный X-User-Id
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/friends/approve/{friendId}:
+    post:
+      summary: Принять заявку в друзья
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: friendId
+          required: true
+          schema:
+            type: integer
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Заявка принята
+        "400":
+          description: Некорректный userId или friendId
+        "404":
+          description: Заявка не найдена
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/friends:
+    get:
+      summary: Получить список друзей пользователя
+      tags:
+        - Social Service
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список друзей
+        "400":
+          description: Некорректный X-User-Id
+        "500":
+          description: Ошибка сервера
+  /api/social/v1/friends/{userId}:
+    get:
+      summary: Получить список друзей другого пользователя
+      tags:
+        - Social Service
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список друзей пользователя
+        "400":
+          description: Некорректный userId
+        "500":
+          description: Ошибка сервера
+
+  /api/store/v1/products:
+    get:
+      summary: Получить список товаров с фильтрацией
+      tags:
+        - Store Service
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [digital, physical]
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Список товаров
+        "500":
+          description: Ошибка сервера
+  /api/store/v1/products/{id}:
+    get:
+      summary: Получить информацию о товаре
+      tags:
+        - Store Service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Информация о товаре
+        "400":
+          description: Некорректный id
+        "404":
+          description: Продукт не найден
+        "500":
+          description: Ошибка сервера
+  /api/store/v1/seller/products:
+    get:
+      summary: Получить список товаров продавца
+      tags:
+        - Store Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Список товаров продавца
+        "400":
+          description: Ошибка запроса
+        "403":
+          description: Только для продавцов
+        "500":
+          description: Ошибка сервера
+    post:
+      summary: Добавить новый товар
+      tags:
+        - Store Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, type, price, systemrequirements]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [digital, physical]
+                price:
+                  type: number
+                systemrequirements:
+                  type: string
+      responses:
+        "201":
+          description: Продукт создан
+        "400":
+          description: Ошибка запроса
+        "409":
+          description: Продукт с таким именем уже существует
+        "500":
+          description: Ошибка сервера
+  /api/store/v1/seller/products/{id}:
+    put:
+      summary: Обновить товар продавца
+      tags:
+        - Store Service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, price, systemrequirements]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                systemrequirements:
+                  type: string
+      responses:
+        "200":
+          description: Товар обновлен
+        "400":
+          description: Ошибка в данных
+        "403":
+          description: Ошибка доступа
+        "500":
+          description: Ошибка сервера
+  /api/store/v1/seller/products/{id}/licenses:
+    post:
+      summary: Добавить лицензии к продукту
+      tags:
+        - Store Service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: integer
+      responses:
+        "201":
+          description: Лицензии добавлены
+        "400":
+          description: Ошибка запроса
+        "403":
+          description: Ошибка доступа
+        "500":
+          description: Ошибка сервера
+    get:
+      summary: Получить лицензии продукта
+      tags:
+        - Store Service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Список лицензий
+        "400":
+          description: Ошибка запроса
+        "403":
+          description: Ошибка доступа
+        "500":
+          description: Ошибка сервера
+  /api/store/v1/products/seller/{sellerId}:
+    get:
+      summary: Получить товары продавца
+      tags:
+        - Store Service
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список товаров продавца
+        "400":
+          description: Некорректный sellerId
+        "500":
+          description: Ошибка сервера
+
+  /api/users/v1/register:
+    post:
+      summary: Регистрация нового пользователя
+      tags:
+        - Users Service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, nickname, password, name, surname, birthdate]
+              properties:
+                email:
+                  type: string
+                nickname:
+                  type: string
+                password:
+                  type: string
+                name:
+                  type: string
+                surname:
+                  type: string
+                birthdate:
+                  type: string
+                  format: date
+      responses:
+        "201":
+          description: Пользователь зарегистрирован
+        "400":
+          description: Ошибка валидации
+        "500":
+          description: Ошибка сервера
+  /api/users/v1/login:
+    post:
+      summary: Аутентификация пользователя
+      tags:
+        - Users Service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Успешная аутентификация
+        "400":
+          description: Неверные реквизиты
+  /api/users/v1/refresh-token:
+    post:
+      summary: Обновление access токена
+      tags:
+        - Users Service
+      responses:
+        "200":
+          description: Новый access токен
+        "401":
+          description: Нет refresh токена
+        "403":
+          description: Refresh токен недействителен
+  /api/users/v1/validate:
+    get:
+      summary: Валидация access токена
+      tags:
+        - Users Service
+      responses:
+        "200":
+          description: Токен валиден
+        "401":
+          description: Токен невалиден
+  /api/users/v1/users/{id}:
+    get:
+      summary: Получить данные пользователя по ID
+      tags:
+        - Users Service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные пользователя
+        "404":
+          description: Пользователь не найден
+  /api/users/v1/me:
+    get:
+      summary: Получить данные текущего пользователя
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Данные текущего пользователя
+        "400":
+          description: Отсутствует X-User-Id
+    put:
+      summary: Обновить данные текущего пользователя
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, surname, birthdate]
+              properties:
+                name:
+                  type: string
+                surname:
+                  type: string
+                birthdate:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Данные пользователя обновлены
+        "400":
+          description: Ошибка запроса
+        "404":
+          description: Пользователь не найден
+  /api/users/v1/logout:
+    post:
+      summary: Выход пользователя
+      tags:
+        - Users Service
+      responses:
+        "200":
+          description: Сессия завершена
+  /api/users/v1/sessions:
+    get:
+      summary: Получить активные сессии пользователя
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Список сессий
+        "400":
+          description: Неверный X-User-Id
+  /api/users/v1/logout-all:
+    post:
+      summary: Завершить все сессии пользователя
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Все сессии удалены
+        "400":
+          description: Неверный X-User-Id
+  /api/users/v1/password:
+    put:
+      summary: Смена пароля
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oldPassword, newPassword]
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        "200":
+          description: Пароль изменен
+        "400":
+          description: Ошибка в реквизитах
+        "403":
+          description: Старый пароль неверен
+        "500":
+          description: Ошибка сервера
+  /api/users/v1/admin/users:
+    get:
+      summary: Получить список всех пользователей
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Список пользователей
+        "403":
+          description: Доступ только для администратора
+    post:
+      summary: Создать нового пользователя (только seller или admin)
+      tags:
+        - Users Service
+      parameters:
+        - name: X-User-Role-Name
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, nickname, password, name, surname, birthdate, role]
+              properties:
+                email:
+                  type: string
+                nickname:
+                  type: string
+                password:
+                  type: string
+                name:
+                  type: string
+                surname:
+                  type: string
+                birthdate:
+                  type: string
+                  format: date
+                role:
+                  type: string
+                  enum: [seller, admin]
+      responses:
+        "201":
+          description: Пользователь создан
+        "400":
+          description: Ошибка запроса
+        "409":
+          description: Пользователь уже существует
+        "403":
+          description: Доступ только для администратора

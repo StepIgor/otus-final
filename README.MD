@@ -1,5 +1,7 @@
 **Порядок установки (Kubernetes + Helm, namespace любой свой)**
-1. Разворачивание БД сервисов (PostgreSQL на каждый, общий Redis)
+
+1. Разворачивание БД сервисов (PostgreSQL каждому, общий Redis), общий RabbitMQ (для асинхронного взаимодействия между сервисами), Swagger (для просмотра API-методов сервисов)
+
 ```bash
 helm install users-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install billing-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
@@ -9,33 +11,33 @@ helm install library-postgresql bitnami/postgresql -f values/postgresql_common_v
 helm install notifications-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install social-postgresql bitnami/postgresql -f values/postgresql_common_values.yaml
 helm install common-redis bitnami/redis -f values/redis_common_values.yaml
-```
-2. Установка RabbitMQ
-```bash
 helm install rabbitmq bitnami/rabbitmq -f values/rabbitmq_common_values.yaml
+helm install swagger src/swagger
 ```
-3. Применение Kubernetes-манифестов (секреты, миграция, конфиги, деплои и сервисы)
+
+2. Применение Kubernetes-манифестов (секреты, миграция, конфиги, деплои и сервисы)
+
 ```bash
 kubectl apply -f manifests/
 ```
-4. Подготовка SSL-сертификатов для NGINX Gateway
+
+3. Подготовка SSL-сертификатов для NGINX Gateway, его установка (вместо стокового Ingress Minikube, чтобы последний не делал подмену сертификата на дефолтный)
+
 ```bash
 kubectl create secret tls nginx-tls --cert=arch.homework.pem --key=arch.homework-key.pem
-```
-5. Установка NGINX Gateway из своего helm-чарта
-```bash
 helm install nginx-gateway src/gateway
 ```
-6. Проброс портов к Gateway для работы https (чтобы стоковый Ingress Minikube не делал подмену сертификата)
+
+4. Установка зависимостей Front SPA и запуск веб-клиента (http://localhost:5173)
+
+```bash
+yarn --cwd src/svelte-spa install
+yarn --cwd src/svelte-spa dev
+```
+
+5. Проброс портов к NGINX Gateway и Swagger UI (https://arch.homework:8443, http://localhost:8080) (каждую команду вызывать в отдельном терминале)
+
 ```bash
 kubectl port-forward svc/gateway-service 8443:443
-```
-7. Установка зависимостей Front SPA (веб-клиент)
-```bash
-cd src/svelte-spa
-yarn #npm install
-```
-8. Запуск веб-клиента
-```bash
-yarn dev #npm run dev
+kubectl port-forward svc/swagger 8080:80
 ```
