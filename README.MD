@@ -39,5 +39,5 @@ yarn --cwd src/svelte-spa dev
 
 ```bash
 kubectl port-forward svc/gateway-service 8443:443
-kubectl port-forward svc/swagger 8080:80
+kubectl port-forward svc/swagger-ui 8080:80
 ```
