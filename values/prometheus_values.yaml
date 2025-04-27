@@ -1,35 +1,99 @@
-scrape_configs:
+extraScrapeConfigs: |
   - job_name: 'users-service'
-    metrics_path: /api/users/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['users-service:80']
-
+      - targets:
+        - https://users-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: users-service:80
   - job_name: 'billing-service'
-    metrics_path: /api/billing/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['billing-service:80']
-
-  - job_name: 'orders-service'
-    metrics_path: /api/orders/metrics
-    static_configs:
-      - targets: ['orders-service:80']
-
+      - targets:
+        - https://billing-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: billing-service:80
   - job_name: 'store-service'
-    metrics_path: /api/store/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['store-service:80']
-
+      - targets:
+        - https://store-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: store-service:80
+  - job_name: 'orders-service'
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://orders-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: orders-service:80
   - job_name: 'library-service'
-    metrics_path: /api/library/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['library-service:80']
-
+      - targets:
+        - https://library-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: library-service:80
   - job_name: 'social-service'
-    metrics_path: /api/social/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['social-service:80']
-
+      - targets:
+        - https://social-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: social-service:80
   - job_name: 'notifications-service'
-    metrics_path: /api/notifications/metrics
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['notifications-service:80']
+      - targets:
+        - https://notifications-service
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: notifications-service:80
