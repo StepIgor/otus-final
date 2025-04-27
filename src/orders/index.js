@@ -5,6 +5,7 @@ import Redis from "ioredis";
 import cors from "cors";
 import amqplib from "amqplib";
 import { v4 as uuidv4 } from "uuid";
+import prom from "prom-client";
 
 const APP_PORT = process.env.APP_PORT;
 const RABBIT_URL = `amqp://${process.env.RABBITMQ_USER}:${process.env.RABBITMQ_PSWD}@${process.env.RABBITMQ_HOST}`;
@@ -24,6 +25,60 @@ const postgresql = new Pool({
 });
 
 app.use(express.json());
+
+// Создаем реестр для наших метрик
+const promRegister = new prom.Registry();
+prom.collectDefaultMetrics({ promRegister });
+
+// Метрика: общее количество HTTP-запросов
+const httpRequestCounter = new prom.Counter({
+  name: "http_requests_total",
+  help: "Общее количество HTTP запросов",
+  labelNames: ["method", "route", "code"],
+});
+
+// Метрика: продолжительность обработки запросов
+const httpRequestDuration = new prom.Histogram({
+  name: "http_request_duration_seconds",
+  help: "Продолжительность HTTP запросов в секундах",
+  labelNames: ["method", "route", "code"],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+});
+
+promRegister.registerMetric(httpRequestCounter);
+promRegister.registerMetric(httpRequestDuration);
+
+// Middleware для подсчета метрик
+app.use((req, res, next) => {
+  const start = process.hrtime();
+
+  res.on("finish", () => {
+    const durationInSeconds = getDurationInSeconds(start);
+    const routePath = req.route?.path || req.path || "unknown";
+
+    httpRequestCounter.inc({
+      method: req.method,
+      route: routePath,
+      code: res.statusCode,
+    });
+
+    httpRequestDuration.observe(
+      {
+        method: req.method,
+        route: routePath,
+        code: res.statusCode,
+      },
+      durationInSeconds
+    );
+  });
+
+  next();
+});
+
+function getDurationInSeconds(start) {
+  const diff = process.hrtime(start);
+  return diff[0] + diff[1] / 1e9;
+}
 
 // Отправка сообщений в RabbitMQ
 async function sendToRabbitExchange(exchange, routingKey, message) {
@@ -88,18 +143,26 @@ async function subscribeToOrderUpdated() {
         await client.query("COMMIT");
         channel.ack(msg);
         if (userId) {
-          sendToRabbitExchange("notifications_events", "notifications.created", {
-            userId,
-            uuid: uuidv4(),
-            text: `По заказу #${orderId} есть обновления. Обновлённый статус: "${status}", комментарий: "${comment}"`,
-          });
+          sendToRabbitExchange(
+            "notifications_events",
+            "notifications.created",
+            {
+              userId,
+              uuid: uuidv4(),
+              text: `По заказу #${orderId} есть обновления. Обновлённый статус: "${status}", комментарий: "${comment}"`,
+            }
+          );
         }
         if (sellerId && status === "pending") {
-          sendToRabbitExchange("notifications_events", "notifications.created", {
-            userId: sellerId,
-            uuid: uuidv4(),
-            text: `Заказ #${orderId} ожидает ваших действий. Актуализируйте его статус в разделе "Издатель"`,
-          });
+          sendToRabbitExchange(
+            "notifications_events",
+            "notifications.created",
+            {
+              userId: sellerId,
+              uuid: uuidv4(),
+              text: `Заказ #${orderId} ожидает ваших действий. Актуализируйте его статус в разделе "Издатель"`,
+            }
+          );
         }
       } catch (err) {
         await client.query("ROLLBACK");
@@ -116,6 +179,11 @@ async function subscribeToOrderUpdated() {
 }
 
 // ENDPOINTS
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", promRegister.contentType);
+  res.end(await promRegister.metrics());
+});
+
 app.get("/v1/orders", async (req, res) => {
   const userId = req.header("X-User-Id");
 
