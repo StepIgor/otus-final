@@ -24,6 +24,8 @@
 
   async function setAllInfo() {
     userId = $params.userid;
+    isFriendBtnDisabled = false;
+    friendBtnCustomText = "";
     await Promise.all([setUserInfo(userId), setMyFriends()]);
     isItMe = userInfo?.nickname === $userLogin;
     isUserMyFriend = myFriends?.some(
