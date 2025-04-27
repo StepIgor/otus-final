@@ -35,9 +35,17 @@ yarn --cwd src/svelte-spa install
 yarn --cwd src/svelte-spa dev
 ```
 
-5. Проброс портов к NGINX Gateway и Swagger UI (https://arch.homework:8443, http://localhost:8080) (каждую команду вызывать в отдельном терминале)
+5. Установка Prometheus + Grafana
+```bash
+helm install prometheus prometheus-community/prometheus -f values/prometheus_values.yaml
+helm install grafana grafana/grafana
+kubectl get secret grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```
+
+6. Проброс портов к NGINX Gateway, Swagger UI, Grafana (https://arch.homework:8443, http://localhost:8080, http://localhost:8081) (каждую команду вызывать в отдельном терминале)
 
 ```bash
 kubectl port-forward svc/gateway-service 8443:443
 kubectl port-forward svc/swagger-ui 8080:80
+kubectl port-forward svc/grafana 8081:80
 ```
